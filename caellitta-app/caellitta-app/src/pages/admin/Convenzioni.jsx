@@ -115,7 +115,7 @@ export default function Convenzioni() {
         return {
           booking_id:  assign.booking_id,
           template_id: tid,
-          code:        booking.code + '-' + (t?.partner || 'CPR').substring(0,3).toUpperCase(),
+          code: booking.code + '-' + (t?.partner || 'CPR').substring(0,3).toUpperCase() + '-' + Date.now().toString(36).toUpperCase(),
           status:      'available',
         }
       })
