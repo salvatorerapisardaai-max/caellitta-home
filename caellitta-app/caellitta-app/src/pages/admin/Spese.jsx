@@ -16,25 +16,65 @@ export default function Spese() {
   const [form, setForm]         = useState(EMPTY)
   const [editing, setEditing]   = useState(null)
   const [saving, setSaving]     = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [filterMonth, setFilter]= useState('all')
 
   useEffect(() => { load() }, [])
 
   async function load() {
-    const { data } = await sb.from('expenses').select('*').order('date', { ascending: false })
+    const { data, error } = await sb.from('expenses').select('*').order('date', { ascending: false })
+    if (error) { console.error('load error:', error); return }
     setExpenses(data || [])
   }
 
-  function openNew() { setForm(EMPTY); setEditing(null); setModal(true) }
-  function openEdit(e) { setForm({ ...e, date: e.date?.slice(0,10) }); setEditing(e.id); setModal(true) }
+  function openNew() { setForm(EMPTY); setEditing(null); setSaveError(''); setModal(true) }
+
+  function openEdit(e) {
+    setForm({
+      description: e.description || '',
+      amount:      e.amount      || '',
+      category:    e.category    || 'Pulizie',
+      date:        e.date?.slice(0,10) || new Date().toISOString().split('T')[0],
+      notes:       e.notes       || ''
+    })
+    setEditing(e.id)
+    setSaveError('')
+    setModal(true)
+  }
 
   async function save() {
-    if (!form.description || !form.amount) return
+    if (!form.description || !form.amount) {
+      setSaveError('Descrizione e importo sono obbligatori.')
+      return
+    }
     setSaving(true)
-    const payload = { ...form, amount: parseFloat(form.amount) }
-    if (editing) await sb.from('expenses').update(payload).eq('id', editing)
-    else await sb.from('expenses').insert(payload)
-    setSaving(false); setModal(false); load()
+    setSaveError('')
+
+    const payload = {
+      description: form.description,
+      amount:      parseFloat(form.amount),
+      category:    form.category,
+      date:        form.date,
+      notes:       form.notes || null
+    }
+
+    try {
+      if (editing) {
+        const { error } = await sb.from('expenses').update(payload).eq('id', editing)
+        if (error) throw error
+      } else {
+        const { error } = await sb.from('expenses').insert(payload)
+        if (error) throw error
+      }
+      await load()
+      setModal(false)
+      setEditing(null)
+    } catch (err) {
+      console.error('save error:', err)
+      setSaveError('Errore: ' + (err.message || JSON.stringify(err)))
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function del(id) {
@@ -43,13 +83,10 @@ export default function Spese() {
     load()
   }
 
-  // Month filter options
   const months = [...new Set(expenses.map(e => e.date?.slice(0,7)))].sort().reverse()
-
   const filtered = filterMonth === 'all' ? expenses : expenses.filter(e => e.date?.startsWith(filterMonth))
   const totalFiltered = filtered.reduce((s, e) => s + (e.amount || 0), 0)
 
-  // By category totals
   const byCat = CATEGORIES.map(cat => ({
     cat,
     total: expenses.filter(e => e.category === cat).reduce((s, e) => s + (e.amount || 0), 0)
@@ -57,7 +94,7 @@ export default function Spese() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.8rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button className="btn-sm" onClick={() => setFilter('all')} style={filterMonth==='all'?{borderColor:'var(--gold)',color:'var(--gold)'}:{}}>Tutte</button>
           {months.slice(0,6).map(m => (
@@ -73,6 +110,9 @@ export default function Spese() {
         {/* BY CATEGORY */}
         <div className="card">
           <div className="sec-title" style={{ marginBottom: '1rem' }}>Per categoria</div>
+          {byCat.length === 0 && (
+            <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)' }}>Nessuna spesa ancora</p>
+          )}
           {byCat.map(({ cat, total }) => {
             const max = Math.max(...byCat.map(c => c.total))
             return (
@@ -88,7 +128,7 @@ export default function Spese() {
             )
           })}
           <div style={{ marginTop: '1.2rem', paddingTop: '1rem', borderTop: '1px solid var(--gold-dim)', display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.65rem', color: 'var(--salt-faint)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Totale {filterMonth !== 'all' ? 'periodo' : ''}</span>
+            <span style={{ fontSize: '0.65rem', color: 'var(--salt-faint)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Totale</span>
             <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.2rem', color: '#e08080' }}>€{totalFiltered.toFixed(2)}</span>
           </div>
         </div>
@@ -115,7 +155,7 @@ export default function Spese() {
               <span style={{ fontSize: '0.58rem', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '0.2rem 0.55rem', border: '1px solid var(--gold-dim)', color: CAT_COLORS[e.category] || 'var(--salt-faint)' }}>
                 {e.category}
               </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', justifyContent: 'flex-end' }}>
                 <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', color: '#e08080' }}>−€{e.amount?.toFixed(2)}</span>
                 <button className="btn-sm" onClick={() => openEdit(e)}>✏</button>
                 <button className="btn-sm danger" onClick={() => del(e.id)}>✕</button>
@@ -127,6 +167,11 @@ export default function Spese() {
 
       {/* MODAL */}
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Modifica spesa' : 'Nuova spesa'}>
+        {saveError && (
+          <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#e08080', lineHeight: 1.6 }}>
+            {saveError}
+          </div>
+        )}
         <div className="form-group">
           <label className="form-label">Descrizione *</label>
           <input className="form-input" value={form.description} onChange={e => setForm(p=>({...p,description:e.target.value}))} placeholder="Pulizie fine soggiorno" />
