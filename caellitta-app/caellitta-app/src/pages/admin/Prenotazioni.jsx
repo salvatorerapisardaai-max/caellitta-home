@@ -65,7 +65,6 @@ export default function Prenotazioni() {
       setSaveError('Nome, check-in e check-out sono obbligatori.')
       return
     }
-
     setSaving(true)
     setSaveError('')
 
@@ -95,11 +94,9 @@ export default function Prenotazioni() {
         const { error: bErr } = await sb.from('bookings').insert({ ...payload, code, guest_id: guest?.id })
         if (bErr) throw bErr
       }
-
       await load()
       setModal(false)
       setEditing(null)
-
     } catch (err) {
       console.error('save error:', err)
       setSaveError('Errore: ' + (err.message || JSON.stringify(err)))
@@ -113,6 +110,36 @@ export default function Prenotazioni() {
 
   return (
     <div>
+      <style>{`
+        .pren-card {
+          padding: 1rem;
+          margin-bottom: 0.5rem;
+          border: 1px solid var(--gold-dim);
+          background: var(--lava-card);
+        }
+        .pren-card-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 0.5rem;
+          gap: 0.5rem;
+        }
+        .pren-card-meta {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          flex-wrap: wrap;
+          font-size: 0.75rem;
+          color: var(--salt-dim);
+        }
+        .pren-actions {
+          display: flex;
+          gap: 0.4rem;
+          flex-shrink: 0;
+        }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+      `}</style>
 
       {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.8rem', marginBottom: '1rem' }}>
@@ -135,34 +162,27 @@ export default function Prenotazioni() {
       )}
 
       {filtered.map(b => (
-        <div key={b.id} style={{
-          display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto',
-          gap: '1rem', padding: '1rem', marginBottom: '0.5rem',
-          border: '1px solid var(--gold-dim)', background: 'var(--lava-card)',
-          alignItems: 'start', overflow: 'hidden'
-        }}>
-          <div>
-            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem' }}>{b.guest_name}</div>
-            <div style={{ fontSize: '0.6rem', fontFamily: 'monospace', color: 'rgba(201,171,114,.45)' }}>{b.code}</div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--salt-dim)', marginTop: '0.4rem', lineHeight: 1.7 }}>
-              📥 {fmtDate(b.check_in)}<br/>
-              📤 {fmtDate(b.check_out)}<br/>
-              👤 {b.guests_count} ospiti · {b.platform}
+        <div key={b.id} className="pren-card">
+          {/* Riga top: nome + bottoni */}
+          <div className="pren-card-top">
+            <div>
+              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem' }}>{b.guest_name}</div>
+              <div style={{ fontSize: '0.6rem', fontFamily: 'monospace', color: 'rgba(201,171,114,.45)' }}>{b.code}</div>
+            </div>
+            <div className="pren-actions">
+              <button className="btn-sm" onClick={() => openEdit(b)}>✏</button>
+              <button className="btn-sm danger" onClick={() => cancelBooking(b.id)}>✕</button>
+              <button className="btn-sm danger" onClick={() => hardDeleteBooking(b.id)}>🗑</button>
             </div>
           </div>
-          <div style={{ color: 'var(--gold)', fontFamily: "'Cormorant Garamond',serif", fontSize: '1.1rem', paddingTop: '0.1rem' }}>
-            €{b.amount_total}
-          </div>
-          {/* Badge spostato a sinistra con paddingRight */}
-          <div style={{ paddingRight: '1rem' }}>
+          {/* Riga meta */}
+          <div className="pren-card-meta">
+            <span>📥 {fmtDate(b.check_in)} → 📤 {fmtDate(b.check_out)}</span>
+            <span>👤 {b.guests_count} · {b.platform}</span>
+            <span style={{ color: 'var(--gold)', fontFamily: "'Cormorant Garamond',serif", fontSize: '0.95rem' }}>€{b.amount_total}</span>
             <span className={`badge ${STATUSES[b.status] || 'badge-gray'}`}>
               {STATUS_LABELS[b.status] || b.status}
             </span>
-          </div>
-          <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', paddingRight: '0.3rem' }}>
-            <button className="btn-sm" onClick={() => openEdit(b)}>✏</button>
-            <button className="btn-sm danger" onClick={() => cancelBooking(b.id)}>✕</button>
-            <button className="btn-sm danger" onClick={() => hardDeleteBooking(b.id)}>🗑</button>
           </div>
         </div>
       ))}
@@ -177,45 +197,37 @@ export default function Prenotazioni() {
         <div className="form-grid">
           <div className="form-group">
             <label className="form-label">Nome ospite *</label>
-            <input className="form-input" value={f.guest_name}
-              onChange={e => setForm(p => ({ ...p, guest_name: e.target.value }))} placeholder="Mario Rossi" />
+            <input className="form-input" value={f.guest_name} onChange={e => setForm(p => ({ ...p, guest_name: e.target.value }))} placeholder="Mario Rossi" />
           </div>
           <div className="form-group">
             <label className="form-label">Email</label>
-            <input className="form-input" value={f.guest_email}
-              onChange={e => setForm(p => ({ ...p, guest_email: e.target.value }))} placeholder="mario@email.it" />
+            <input className="form-input" value={f.guest_email} onChange={e => setForm(p => ({ ...p, guest_email: e.target.value }))} placeholder="mario@email.it" />
           </div>
           <div className="form-group">
             <label className="form-label">Check-in *</label>
-            <input className="form-input" type="date" value={f.check_in}
-              onChange={e => setForm(p => ({ ...p, check_in: e.target.value }))} />
+            <input className="form-input" type="date" value={f.check_in} onChange={e => setForm(p => ({ ...p, check_in: e.target.value }))} />
           </div>
           <div className="form-group">
             <label className="form-label">Check-out *</label>
-            <input className="form-input" type="date" value={f.check_out}
-              onChange={e => setForm(p => ({ ...p, check_out: e.target.value }))} />
+            <input className="form-input" type="date" value={f.check_out} onChange={e => setForm(p => ({ ...p, check_out: e.target.value }))} />
           </div>
           <div className="form-group">
             <label className="form-label">N° ospiti</label>
-            <input className="form-input" type="number" value={f.guests_count}
-              onChange={e => setForm(p => ({ ...p, guests_count: e.target.value }))} />
+            <input className="form-input" type="number" value={f.guests_count} onChange={e => setForm(p => ({ ...p, guests_count: e.target.value }))} />
           </div>
           <div className="form-group">
             <label className="form-label">Importo €</label>
-            <input className="form-input" type="number" value={f.amount_total}
-              onChange={e => setForm(p => ({ ...p, amount_total: e.target.value }))} placeholder="0" />
+            <input className="form-input" type="number" value={f.amount_total} onChange={e => setForm(p => ({ ...p, amount_total: e.target.value }))} placeholder="0" />
           </div>
           <div className="form-group">
             <label className="form-label">Piattaforma</label>
-            <select className="form-select" value={f.platform}
-              onChange={e => setForm(p => ({ ...p, platform: e.target.value }))}>
+            <select className="form-select" value={f.platform} onChange={e => setForm(p => ({ ...p, platform: e.target.value }))}>
               {PLATFORMS.map(pl => <option key={pl}>{pl}</option>)}
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">Stato</label>
-            <select className="form-select" value={f.status}
-              onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
+            <select className="form-select" value={f.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
               <option value="confirmed">Confermata</option>
               <option value="pending">In attesa</option>
               <option value="cancelled">Annullata</option>
@@ -224,8 +236,7 @@ export default function Prenotazioni() {
         </div>
         <div className="form-group" style={{ marginTop: '0.5rem' }}>
           <label className="form-label">Note</label>
-          <textarea className="form-textarea" value={f.notes}
-            onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+          <textarea className="form-textarea" value={f.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
         </div>
         <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1.5rem' }}>
           <button className="btn-primary" onClick={save} style={{ flex: 1 }} disabled={saving}>
@@ -234,11 +245,6 @@ export default function Prenotazioni() {
           <button className="btn-cancel" onClick={() => setModal(false)}>Annulla</button>
         </div>
       </Modal>
-
-      <style>{`
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
-      `}</style>
     </div>
   )
 }
