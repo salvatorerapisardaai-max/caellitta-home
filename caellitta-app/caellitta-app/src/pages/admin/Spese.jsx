@@ -8,16 +8,16 @@ const CAT_COLORS = {
   Biancheria: '#d4a84a', Materiali: '#c9ab72', Commissioni: '#9a7ab8', Altro: '#888'
 }
 
-const EMPTY = { description: '', amount: '', category: 'Pulizie', date: new Date().toISOString().split('T')[0], notes: '' }
+const EMPTY = { description: '', amount: '', category: 'Pulizie', date: new Date().toISOString().split('T')[0] }
 
 export default function Spese() {
-  const [expenses, setExpenses] = useState([])
-  const [modal, setModal]       = useState(false)
-  const [form, setForm]         = useState(EMPTY)
-  const [editing, setEditing]   = useState(null)
-  const [saving, setSaving]     = useState(false)
+  const [expenses, setExpenses]   = useState([])
+  const [modal, setModal]         = useState(false)
+  const [form, setForm]           = useState(EMPTY)
+  const [editing, setEditing]     = useState(null)
+  const [saving, setSaving]       = useState(false)
   const [saveError, setSaveError] = useState('')
-  const [filterMonth, setFilter]= useState('all')
+  const [filterMonth, setFilter]  = useState('all')
 
   useEffect(() => { load() }, [])
 
@@ -34,8 +34,7 @@ export default function Spese() {
       description: e.description || '',
       amount:      e.amount      || '',
       category:    e.category    || 'Pulizie',
-      date:        e.date?.slice(0,10) || new Date().toISOString().split('T')[0],
-      notes:       e.notes       || ''
+      date:        e.date?.slice(0, 10) || new Date().toISOString().split('T')[0],
     })
     setEditing(e.id)
     setSaveError('')
@@ -50,12 +49,12 @@ export default function Spese() {
     setSaving(true)
     setSaveError('')
 
+    // Payload SOLO con colonne esistenti nella tabella
     const payload = {
       description: form.description,
       amount:      parseFloat(form.amount),
       category:    form.category,
       date:        form.date,
-      notes:       form.notes || null
     }
 
     try {
@@ -86,7 +85,6 @@ export default function Spese() {
   const months = [...new Set(expenses.map(e => e.date?.slice(0,7)))].sort().reverse()
   const filtered = filterMonth === 'all' ? expenses : expenses.filter(e => e.date?.startsWith(filterMonth))
   const totalFiltered = filtered.reduce((s, e) => s + (e.amount || 0), 0)
-
   const byCat = CATEGORIES.map(cat => ({
     cat,
     total: expenses.filter(e => e.category === cat).reduce((s, e) => s + (e.amount || 0), 0)
@@ -110,9 +108,7 @@ export default function Spese() {
         {/* BY CATEGORY */}
         <div className="card">
           <div className="sec-title" style={{ marginBottom: '1rem' }}>Per categoria</div>
-          {byCat.length === 0 && (
-            <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)' }}>Nessuna spesa ancora</p>
-          )}
+          {byCat.length === 0 && <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)' }}>Nessuna spesa</p>}
           {byCat.map(({ cat, total }) => {
             const max = Math.max(...byCat.map(c => c.total))
             return (
@@ -122,7 +118,7 @@ export default function Spese() {
                   <span style={{ color: '#e08080', fontFamily: "'Cormorant Garamond',serif" }}>€{total.toFixed(0)}</span>
                 </div>
                 <div style={{ height: 3, background: 'var(--lava-hover)', borderRadius: 2 }}>
-                  <div style={{ height: '100%', width: `${(total / max) * 100}%`, background: CAT_COLORS[cat] || 'var(--gold)', borderRadius: 2, transition: 'width 0.6s' }} />
+                  <div style={{ height: '100%', width: `${(total/max)*100}%`, background: CAT_COLORS[cat]||'var(--gold)', borderRadius: 2, transition: 'width 0.6s' }} />
                 </div>
               </div>
             )
@@ -141,18 +137,14 @@ export default function Spese() {
             <div key={e.id} style={{
               display: 'grid', gridTemplateColumns: '1.5fr 0.8fr 1fr auto',
               alignItems: 'center', gap: '1rem', padding: '0.85rem 1.2rem',
-              background: 'var(--lava-card)', border: '1px solid var(--gold-dim)',
-              marginBottom: '0.5rem',
+              background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', marginBottom: '0.5rem',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: CAT_COLORS[e.category] || '#888', flexShrink: 0 }} />
-                <div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--salt-dim)' }}>{e.description}</div>
-                  {e.notes && <div style={{ fontSize: '0.68rem', color: 'var(--salt-faint)' }}>{e.notes}</div>}
-                </div>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: CAT_COLORS[e.category]||'#888', flexShrink: 0 }} />
+                <div style={{ fontSize: '0.8rem', color: 'var(--salt-dim)' }}>{e.description}</div>
               </div>
               <div style={{ fontSize: '0.68rem', color: 'var(--salt-faint)' }}>{fmtDate(e.date)}</div>
-              <span style={{ fontSize: '0.58rem', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '0.2rem 0.55rem', border: '1px solid var(--gold-dim)', color: CAT_COLORS[e.category] || 'var(--salt-faint)' }}>
+              <span style={{ fontSize: '0.58rem', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '0.2rem 0.55rem', border: '1px solid var(--gold-dim)', color: CAT_COLORS[e.category]||'var(--salt-faint)' }}>
                 {e.category}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', justifyContent: 'flex-end' }}>
@@ -191,10 +183,6 @@ export default function Spese() {
           <select className="form-select" value={form.category} onChange={e => setForm(p=>({...p,category:e.target.value}))}>
             {CATEGORIES.map(c => <option key={c}>{c}</option>)}
           </select>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Note</label>
-          <input className="form-input" value={form.notes} onChange={e => setForm(p=>({...p,notes:e.target.value}))} placeholder="Note opzionali" />
         </div>
         <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1.8rem' }}>
           <button className="btn-primary" style={{ flex: 1 }} onClick={save} disabled={saving}>
