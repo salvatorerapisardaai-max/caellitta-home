@@ -67,7 +67,6 @@ export default function Prenotazioni() {
     setModal(true)
   }
 
-  // 🗑 annulla (soft delete)
   async function cancelBooking(id) {
     await sb
       .from('bookings')
@@ -77,9 +76,8 @@ export default function Prenotazioni() {
     load()
   }
 
-  // ❌ elimina definitiva
   async function hardDeleteBooking(id) {
-    if (!confirm('Eliminare DEFINITIVAMENTE questa prenotazione?')) return
+    if (!confirm('Eliminare definitivamente questa prenotazione?')) return
 
     const { error } = await sb
       .from('bookings')
@@ -109,28 +107,6 @@ export default function Prenotazioni() {
     }
 
     try {
-      // 🚫 OVERLAP CHECK
-      const checkIn = new Date(form.check_in)
-      const checkOut = new Date(form.check_out)
-
-      const { data: conflicts } = await sb
-        .from('bookings')
-        .select('*')
-        .neq('id', editing || 'new')
-        .neq('status', 'cancelled')
-
-      const hasOverlap = conflicts?.some(b => {
-        const ci = new Date(b.check_in)
-        const co = new Date(b.check_out)
-        return checkIn < co && checkOut > ci
-      })
-
-      if (hasOverlap) {
-        alert('Errore: esiste già una prenotazione in queste date')
-        setSaving(false)
-        return
-      }
-
       if (editing) {
         const { error } = await sb
           .from('bookings')
@@ -173,7 +149,6 @@ export default function Prenotazioni() {
       setEditing(null)
 
     } catch (err) {
-      console.error(err)
       alert('Errore salvataggio: ' + err.message)
     } finally {
       setSaving(false)
@@ -240,12 +215,13 @@ export default function Prenotazioni() {
               marginBottom: '0.5rem',
               background: 'var(--lava-card)',
               alignItems: 'center',
-              minWidth: 0
+              minWidth: 0,
+              overflow: 'hidden'
             }}
           >
 
             {/* GUEST */}
-            <div>
+            <div style={{ minWidth: 0 }}>
               <div style={{ fontFamily: "'Cormorant Garamond', serif" }}>
                 {b.guest_name}
               </div>
@@ -283,12 +259,28 @@ export default function Prenotazioni() {
               {b.guest_phone || '—'}
             </div>
 
-            {/* ACTIONS */}
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
-              <button className="btn-sm" onClick={() => openEdit(b)}>✏</button>
-              <button className="btn-sm danger" onClick={() => cancelBooking(b.id)}>✕</button>
-              <button className="btn-sm danger" onClick={() => hardDeleteBooking(b.id)}>🗑</button>
+            {/* ACTIONS (FIX MOBILE SAFE) */}
+            <div
+              style={{
+                display: 'flex',
+                gap: '0.4rem',
+                justifyContent: 'flex-end',
+                flexWrap: 'wrap'
+              }}
+            >
+              <button className="btn-sm" onClick={() => openEdit(b)} style={{ flexShrink: 0 }}>
+                ✏
+              </button>
+
+              <button className="btn-sm danger" onClick={() => cancelBooking(b.id)} style={{ flexShrink: 0 }}>
+                ✕
+              </button>
+
+              <button className="btn-sm danger" onClick={() => hardDeleteBooking(b.id)} style={{ flexShrink: 0 }}>
+                🗑
+              </button>
             </div>
+
           </div>
         ))
       )}
@@ -303,12 +295,12 @@ export default function Prenotazioni() {
 
         <div className="form-grid">
 
-          <input placeholder="Nome ospite" className="form-input"
+          <input className="form-input" placeholder="Nome ospite"
             value={f.guest_name}
             onChange={e => setForm(p => ({ ...p, guest_name: e.target.value }))}
           />
 
-          <input placeholder="Email" className="form-input"
+          <input className="form-input" placeholder="Email"
             value={f.guest_email}
             onChange={e => setForm(p => ({ ...p, guest_email: e.target.value }))}
           />
@@ -323,14 +315,12 @@ export default function Prenotazioni() {
             onChange={e => setForm(p => ({ ...p, check_out: e.target.value }))}
           />
 
-          <input type="number" className="form-input"
-            placeholder="Ospiti"
+          <input type="number" className="form-input" placeholder="Ospiti"
             value={f.guests_count}
             onChange={e => setForm(p => ({ ...p, guests_count: e.target.value }))}
           />
 
-          <input type="number" className="form-input"
-            placeholder="Importo"
+          <input type="number" className="form-input" placeholder="Importo"
             value={f.amount_total}
             onChange={e => setForm(p => ({ ...p, amount_total: e.target.value }))}
           />
