@@ -138,7 +138,7 @@ export default function Prenotazioni() {
 
       {filtered.map(b => (
         <div key={b.id} style={{
-          display: 'grid', gridTemplateColumns: '2fr 2fr 1fr auto', gap: '1rem',
+          display: 'grid', gridTemplateColumns: '2fr 2fr 1fr auto', overflow: 'hidden',
           padding: '1rem', marginBottom: '0.5rem',
           border: '1px solid var(--gold-dim)', background: 'var(--lava-card)', alignItems: 'start'
         }}>
