@@ -24,7 +24,6 @@ const EMPTY = {
   check_out: '',
   guests_count: 2,
   amount_total: '',
-  amount_deposit: '',
   platform: 'Airbnb',
   status: 'confirmed',
   notes: ''
@@ -38,9 +37,7 @@ export default function Prenotazioni() {
   const [saving, setSaving] = useState(false)
   const [filterStatus, setFilter] = useState('all')
 
-  useEffect(() => {
-    load()
-  }, [])
+  useEffect(() => { load() }, [])
 
   async function load() {
     const { data } = await sb
@@ -68,8 +65,7 @@ export default function Prenotazioni() {
   }
 
   async function cancelBooking(id) {
-    await sb
-      .from('bookings')
+    await sb.from('bookings')
       .update({ status: 'cancelled' })
       .eq('id', id)
 
@@ -77,17 +73,11 @@ export default function Prenotazioni() {
   }
 
   async function hardDeleteBooking(id) {
-    if (!confirm('Eliminare definitivamente questa prenotazione?')) return
+    if (!confirm('Eliminare definitivamente?')) return
 
-    const { error } = await sb
-      .from('bookings')
+    await sb.from('bookings')
       .delete()
       .eq('id', id)
-
-    if (error) {
-      alert('Errore: ' + error.message)
-      return
-    }
 
     load()
   }
@@ -97,23 +87,17 @@ export default function Prenotazioni() {
 
     setSaving(true)
 
-    const { nights, ...safe } = form
-
     const payload = {
-      ...safe,
+      ...form,
       guests_count: Number(form.guests_count) || 1,
-      amount_total: Number(form.amount_total) || 0,
-      amount_deposit: Number(form.amount_deposit) || 0
+      amount_total: Number(form.amount_total) || 0
     }
 
     try {
       if (editing) {
-        const { error } = await sb
-          .from('bookings')
+        await sb.from('bookings')
           .update(payload)
           .eq('id', editing)
-
-        if (error) throw error
       } else {
         const code =
           'CAELLITTA-' +
@@ -121,7 +105,7 @@ export default function Prenotazioni() {
           '-' +
           String(bookings.length + 1).padStart(3, '0')
 
-        const { data: guest, error: gErr } = await sb
+        const { data: guest } = await sb
           .from('guests')
           .insert({
             name: form.guest_name,
@@ -131,25 +115,18 @@ export default function Prenotazioni() {
           .select()
           .single()
 
-        if (gErr) throw gErr
-
-        const { error: bErr } = await sb
-          .from('bookings')
+        await sb.from('bookings')
           .insert({
             ...payload,
             code,
             guest_id: guest?.id
           })
-
-        if (bErr) throw bErr
       }
 
       await load()
       setModal(false)
       setEditing(null)
 
-    } catch (err) {
-      alert('Errore salvataggio: ' + err.message)
     } finally {
       setSaving(false)
     }
@@ -173,19 +150,12 @@ export default function Prenotazioni() {
         gap: '0.8rem',
         marginBottom: '1.5rem'
       }}>
-
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {['all','confirmed','pending','cancelled'].map(s => (
             <button
               key={s}
               onClick={() => setFilter(s)}
               className="btn-sm"
-              style={{
-                whiteSpace: 'nowrap',
-                ...(filterStatus === s
-                  ? { borderColor: 'var(--gold)', color: 'var(--gold)' }
-                  : {})
-              }}
             >
               {s === 'all' ? 'Tutte' : STATUS_LABELS[s]}
             </button>
@@ -208,14 +178,13 @@ export default function Prenotazioni() {
             key={b.id}
             style={{
               display: 'grid',
-              gridTemplateColumns: '2fr 1.6fr 1fr 1fr 0.8fr auto',
+              gridTemplateColumns: '2fr 2fr 1fr 1fr auto',
               gap: '1rem',
-              padding: '0.9rem 1.2rem',
+              padding: '1rem',
+              marginBottom: '0.6rem',
               border: '1px solid var(--gold-dim)',
-              marginBottom: '0.5rem',
               background: 'var(--lava-card)',
-              alignItems: 'center',
-              minWidth: 0,
+              alignItems: 'start',
               overflow: 'hidden'
             }}
           >
@@ -225,21 +194,20 @@ export default function Prenotazioni() {
               <div style={{ fontFamily: "'Cormorant Garamond', serif" }}>
                 {b.guest_name}
               </div>
-
-              <div style={{
-                fontSize: '0.62rem',
-                fontFamily: 'monospace',
-                color: 'rgba(201,171,114,.6)'
-              }}>
-                #{b.code}
+              <div style={{ fontSize: '0.6rem', color: 'var(--salt-faint)' }}>
+                {b.code}
               </div>
             </div>
 
-            {/* DATES */}
+            {/* DATES FIXED (NO OVERLAP) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-              <div>📥 {fmtDate(b.check_in)}</div>
-              <div>📤 {fmtDate(b.check_out)}</div>
-              <div style={{ fontSize: '0.6rem', color: 'var(--salt-faint)' }}>
+              <div style={{ fontSize: '0.72rem' }}>
+                <strong>Check-in:</strong> {fmtDate(b.check_in)}
+              </div>
+              <div style={{ fontSize: '0.72rem' }}>
+                <strong>Check-out:</strong> {fmtDate(b.check_out)}
+              </div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--salt-faint)' }}>
                 {b.guests_count} ospiti
               </div>
             </div>
@@ -254,105 +222,76 @@ export default function Prenotazioni() {
               {STATUS_LABELS[b.status]}
             </span>
 
-            {/* PHONE */}
-            <div style={{ fontSize: '0.65rem' }}>
-              {b.guest_phone || '—'}
-            </div>
-
-            {/* ACTIONS (FIX MOBILE SAFE) */}
-            <div
-              style={{
-                display: 'flex',
-                gap: '0.4rem',
-                justifyContent: 'flex-end',
-                flexWrap: 'wrap'
-              }}
-            >
-              <button className="btn-sm" onClick={() => openEdit(b)} style={{ flexShrink: 0 }}>
-                ✏
-              </button>
-
-              <button className="btn-sm danger" onClick={() => cancelBooking(b.id)} style={{ flexShrink: 0 }}>
-                ✕
-              </button>
-
-              <button className="btn-sm danger" onClick={() => hardDeleteBooking(b.id)} style={{ flexShrink: 0 }}>
-                🗑
-              </button>
+            {/* ACTIONS FIX */}
+            <div style={{
+              display: 'flex',
+              gap: '0.4rem',
+              justifyContent: 'flex-end',
+              flexWrap: 'wrap'
+            }}>
+              <button className="btn-sm" onClick={() => openEdit(b)}>✏</button>
+              <button className="btn-sm danger" onClick={() => cancelBooking(b.id)}>✕</button>
+              <button className="btn-sm danger" onClick={() => hardDeleteBooking(b.id)}>🗑</button>
             </div>
 
           </div>
         ))
       )}
 
-      {/* MODAL */}
+      {/* MODAL FIX LABELS VISIBILI */}
       <Modal
         open={modal}
         onClose={() => setModal(false)}
         title={editing ? 'Modifica prenotazione' : 'Nuova prenotazione'}
-        subtitle="Gestione booking"
       >
 
         <div className="form-grid">
 
-          <input className="form-input" placeholder="Nome ospite"
-            value={f.guest_name}
-            onChange={e => setForm(p => ({ ...p, guest_name: e.target.value }))}
-          />
+          <div className="form-group">
+            <label>Nome ospite</label>
+            <input value={f.guest_name}
+              onChange={e => setForm(p => ({ ...p, guest_name: e.target.value }))} />
+          </div>
 
-          <input className="form-input" placeholder="Email"
-            value={f.guest_email}
-            onChange={e => setForm(p => ({ ...p, guest_email: e.target.value }))}
-          />
+          <div className="form-group">
+            <label>Email</label>
+            <input value={f.guest_email}
+              onChange={e => setForm(p => ({ ...p, guest_email: e.target.value }))} />
+          </div>
 
-          <input type="date" className="form-input"
-            value={f.check_in}
-            onChange={e => setForm(p => ({ ...p, check_in: e.target.value }))}
-          />
+          <div className="form-group">
+            <label>Check-in</label>
+            <input type="date"
+              value={f.check_in}
+              onChange={e => setForm(p => ({ ...p, check_in: e.target.value }))} />
+          </div>
 
-          <input type="date" className="form-input"
-            value={f.check_out}
-            onChange={e => setForm(p => ({ ...p, check_out: e.target.value }))}
-          />
+          <div className="form-group">
+            <label>Check-out</label>
+            <input type="date"
+              value={f.check_out}
+              onChange={e => setForm(p => ({ ...p, check_out: e.target.value }))} />
+          </div>
 
-          <input type="number" className="form-input" placeholder="Ospiti"
-            value={f.guests_count}
-            onChange={e => setForm(p => ({ ...p, guests_count: e.target.value }))}
-          />
+          <div className="form-group">
+            <label>Ospiti</label>
+            <input type="number"
+              value={f.guests_count}
+              onChange={e => setForm(p => ({ ...p, guests_count: e.target.value }))} />
+          </div>
 
-          <input type="number" className="form-input" placeholder="Importo"
-            value={f.amount_total}
-            onChange={e => setForm(p => ({ ...p, amount_total: e.target.value }))}
-          />
-
-          <select className="form-input"
-            value={f.status}
-            onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
-          >
-            <option value="confirmed">Confermata</option>
-            <option value="pending">In attesa</option>
-          </select>
-
-          <select className="form-input"
-            value={f.platform}
-            onChange={e => setForm(p => ({ ...p, platform: e.target.value }))}
-          >
-            {PLATFORMS.map(p => <option key={p}>{p}</option>)}
-          </select>
+          <div className="form-group">
+            <label>Importo</label>
+            <input type="number"
+              value={f.amount_total}
+              onChange={e => setForm(p => ({ ...p, amount_total: e.target.value }))} />
+          </div>
 
         </div>
 
-        <textarea
-          className="form-textarea"
-          placeholder="Note"
-          value={f.notes}
-          onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-          style={{ marginTop: '1rem' }}
-        />
-
         <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1.2rem' }}>
           <button className="btn-primary" style={{ flex: 1 }} onClick={save}>
-            {saving ? 'Salvataggio…' : editing ? 'Aggiorna' : 'Salva'}
+            {saving ? 'Salvataggio…' : 'Salva'}
           </button>
 
           <button className="btn-cancel" onClick={() => setModal(false)}>
@@ -362,11 +301,25 @@ export default function Prenotazioni() {
 
       </Modal>
 
+      {/* CSS FIX */}
       <style>{`
         .form-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 1rem;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.3rem;
+        }
+
+        .form-group label {
+          font-size: 0.65rem;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: var(--salt-faint);
         }
 
         @media (max-width: 768px) {
@@ -380,7 +333,6 @@ export default function Prenotazioni() {
   )
 }
 
-/* UTILS */
 function fmtDate(d) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('it-IT', {
