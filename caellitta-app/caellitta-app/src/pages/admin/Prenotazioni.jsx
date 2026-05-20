@@ -3,6 +3,7 @@ import { sb } from '../../lib/supabase'
 import Modal from '../../components/Modal'
 
 const PLATFORMS = ['Airbnb', 'Booking.com', 'Diretto']
+
 const STATUSES = {
   confirmed: 'badge-green',
   pending: 'badge-amber',
@@ -25,7 +26,7 @@ const EMPTY = {
   check_out: '',
   guests_count: 2,
   amount_total: '',
-  amount_deposit: 0,
+  amount_deposit: '',
   platform: 'Airbnb',
   status: 'confirmed',
   notes: ''
@@ -75,45 +76,69 @@ export default function Prenotazioni() {
 
     const payload = {
       ...form,
-      guests_count: parseInt(form.guests_count),
-      amount_total: parseFloat(form.amount_total) || 0,
-      amount_deposit: parseFloat(form.amount_deposit) || 0
+      guests_count: Number(form.guests_count),
+      amount_total: Number(form.amount_total) || 0,
+      amount_deposit: Number(form.amount_deposit) || 0
     }
 
-    if (editing) {
-      await sb.from('bookings').update(payload).eq('id', editing)
-    } else {
-      const code =
-        'CAELLITTA-' +
-        new Date().getFullYear() +
-        '-' +
-        String(bookings.length + 1).padStart(3, '0')
+    try {
+      if (editing) {
+        const { error } = await sb
+          .from('bookings')
+          .update(payload)
+          .eq('id', editing)
 
-      const { data: guest } = await sb
-        .from('guests')
-        .insert({
-          name: form.guest_name,
-          email: form.guest_email,
-          phone: form.guest_phone
-        })
-        .select()
-        .single()
+        if (error) throw error
+      } else {
+        const code =
+          'CAELLITTA-' +
+          new Date().getFullYear() +
+          '-' +
+          String(bookings.length + 1).padStart(3, '0')
 
-      await sb.from('bookings').insert({
-        ...payload,
-        code,
-        guest_id: guest?.id
-      })
+        const { data: guest, error: gErr } = await sb
+          .from('guests')
+          .insert({
+            name: form.guest_name,
+            email: form.guest_email,
+            phone: form.guest_phone
+          })
+          .select()
+          .single()
+
+        if (gErr) throw gErr
+
+        const { error: bErr } = await sb
+          .from('bookings')
+          .insert({
+            ...payload,
+            code,
+            guest_id: guest?.id
+          })
+
+        if (bErr) throw bErr
+      }
+
+      await load()
+      setModal(false)
+      setEditing(null)
+
+    } catch (err) {
+      console.error(err)
+      alert('Errore salvataggio: ' + err.message)
+    } finally {
+      setSaving(false)
     }
-
-    setSaving(false)
-    setModal(false)
-    load()
   }
 
   async function deleteBooking(id) {
     if (!confirm('Eliminare questa prenotazione?')) return
-    await sb.from('bookings').update({ status: 'cancelled' }).eq('id', id)
+
+    await sb
+      .from('bookings')
+      .update({ status: 'cancelled' })
+      .eq('id', id)
+
     load()
   }
 
@@ -133,19 +158,13 @@ export default function Prenotazioni() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          gap: '0.8rem',
           flexWrap: 'wrap',
+          gap: '0.8rem',
           marginBottom: '1.5rem'
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            gap: '0.5rem',
-            flexWrap: 'wrap'
-          }}
-        >
-          {['all', 'confirmed', 'pending', 'completed', 'cancelled'].map(s => (
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {['all','confirmed','pending','completed','cancelled'].map(s => (
             <button
               key={s}
               onClick={() => setFilter(s)}
@@ -174,62 +193,6 @@ export default function Prenotazioni() {
         </button>
       </div>
 
-      {/* STATS */}
-      <div
-        style={{
-          display: 'flex',
-          border: '1px solid var(--gold-dim)',
-          marginBottom: '1.2rem',
-          overflow: 'hidden',
-          flexWrap: 'wrap'
-        }}
-      >
-        {[
-          { label: 'Totale', val: bookings.filter(b => b.status !== 'cancelled').length },
-          { label: 'Confermate', val: bookings.filter(b => b.status === 'confirmed').length },
-          { label: 'In attesa', val: bookings.filter(b => b.status === 'pending').length },
-          {
-            label: 'Entrate tot.',
-            val:
-              '€' +
-              bookings
-                .filter(b => b.status !== 'cancelled')
-                .reduce((s, b) => s + (b.amount_total || 0), 0)
-                .toLocaleString('it')
-          }
-        ].map((s, i, arr) => (
-          <div
-            key={s.label}
-            style={{
-              flex: '1 1 120px',
-              padding: '1rem',
-              textAlign: 'center',
-              borderRight: i < arr.length - 1 ? '1px solid var(--gold-dim)' : 'none'
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "'Cormorant Garamond',serif",
-                fontSize: '1.5rem',
-                color: 'var(--gold)'
-              }}
-            >
-              {s.val}
-            </div>
-            <div
-              style={{
-                fontSize: '0.55rem',
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                color: 'var(--salt-faint)'
-              }}
-            >
-              {s.label}
-            </div>
-          </div>
-        ))}
-      </div>
-
       {/* LIST */}
       {filtered.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
@@ -246,11 +209,13 @@ export default function Prenotazioni() {
               padding: '0.9rem 1.2rem',
               border: '1px solid var(--gold-dim)',
               marginBottom: '0.5rem',
-              background: 'var(--lava-card)'
+              background: 'var(--lava-card)',
+              alignItems: 'center',
+              minWidth: 0
             }}
           >
-            <div>
-              <div style={{ fontFamily: "'Cormorant Garamond',serif" }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif" }}>
                 {b.guest_name}
               </div>
               <div style={{ fontSize: '0.6rem', color: 'var(--salt-faint)' }}>
@@ -262,15 +227,19 @@ export default function Prenotazioni() {
               {fmtDate(b.check_in)} → {fmtDate(b.check_out)}
             </div>
 
-            <div style={{ color: 'var(--gold)' }}>€{b.amount_total}</div>
+            <div style={{ color: 'var(--gold)' }}>
+              €{b.amount_total}
+            </div>
 
             <span className={`badge ${STATUSES[b.status]}`}>
               {STATUS_LABELS[b.status]}
             </span>
 
-            <div style={{ fontSize: '0.65rem' }}>{b.guest_phone || '—'}</div>
+            <div style={{ fontSize: '0.65rem' }}>
+              {b.guest_phone || '—'}
+            </div>
 
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
               <button className="btn-sm" onClick={() => openEdit(b)}>✏</button>
               <button className="btn-sm danger" onClick={() => deleteBooking(b.id)}>✕</button>
             </div>
@@ -283,41 +252,87 @@ export default function Prenotazioni() {
         open={modal}
         onClose={() => setModal(false)}
         title={editing ? 'Modifica prenotazione' : 'Nuova prenotazione'}
+        subtitle="Compila i campi della prenotazione"
       >
-        <div className="form-row">
-          <input
-            className="form-input"
-            value={f.guest_name}
-            onChange={e => setForm(p => ({ ...p, guest_name: e.target.value }))}
-            placeholder="Nome ospite"
-          />
-          <input
-            className="form-input"
-            value={f.guest_email}
-            onChange={e => setForm(p => ({ ...p, guest_email: e.target.value }))}
-            placeholder="Email"
-          />
+        <div className="form-grid">
+
+          <div className="form-group">
+            <label className="form-label">Nome ospite *</label>
+            <input
+              className="form-input"
+              value={f.guest_name}
+              onChange={e => setForm(p => ({ ...p, guest_name: e.target.value }))}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input
+              className="form-input"
+              value={f.guest_email}
+              onChange={e => setForm(p => ({ ...p, guest_email: e.target.value }))}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Check-in *</label>
+            <input
+              type="date"
+              className="form-input"
+              value={f.check_in}
+              onChange={e => setForm(p => ({ ...p, check_in: e.target.value }))}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Check-out *</label>
+            <input
+              type="date"
+              className="form-input"
+              value={f.check_out}
+              onChange={e => setForm(p => ({ ...p, check_out: e.target.value }))}
+            />
+          </div>
+
         </div>
 
-        <div className="form-row">
-          <input
-            type="date"
-            className="form-input"
-            value={f.check_in}
-            onChange={e => setForm(p => ({ ...p, check_in: e.target.value }))}
-          />
-          <input
-            type="date"
-            className="form-input"
-            value={f.check_out}
-            onChange={e => setForm(p => ({ ...p, check_out: e.target.value }))}
-          />
-        </div>
+        <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1.2rem' }}>
+          <button
+            className="btn-primary"
+            style={{ flex: 1 }}
+            onClick={save}
+            disabled={saving}
+          >
+            {saving ? 'Salvataggio…' : editing ? 'Aggiorna' : 'Salva'}
+          </button>
 
-        <button className="btn-primary" onClick={save} disabled={saving}>
-          {saving ? 'Salvataggio…' : 'Salva'}
-        </button>
+          <button className="btn-cancel" onClick={() => setModal(false)}>
+            Annulla
+          </button>
+        </div>
       </Modal>
+
+      {/* RESPONSIVE FIX */}
+      <style>{`
+        .form-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1rem;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.4rem;
+        }
+
+        @media (max-width: 768px) {
+          .form-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+
     </div>
   )
 }
