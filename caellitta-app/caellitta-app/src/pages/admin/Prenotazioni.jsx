@@ -88,12 +88,10 @@ export default function Prenotazioni() {
         if (error) throw error
       } else {
         const code = 'CAELLITTA-' + new Date().getFullYear() + '-' + String(bookings.length + 1).padStart(3, '0')
-
         const { data: guest, error: gErr } = await sb.from('guests')
           .insert({ name: form.guest_name, email: form.guest_email || null, phone: form.guest_phone || null })
           .select().single()
         if (gErr) throw gErr
-
         const { error: bErr } = await sb.from('bookings').insert({ ...payload, code, guest_id: guest?.id })
         if (bErr) throw bErr
       }
@@ -138,9 +136,10 @@ export default function Prenotazioni() {
 
       {filtered.map(b => (
         <div key={b.id} style={{
-          display: 'grid', gridTemplateColumns: '2fr 2fr 1fr auto', overflow: 'hidden',
-          padding: '1rem', marginBottom: '0.5rem',
-          border: '1px solid var(--gold-dim)', background: 'var(--lava-card)', alignItems: 'start'
+          display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto',
+          gap: '1rem', padding: '1rem', marginBottom: '0.5rem',
+          border: '1px solid var(--gold-dim)', background: 'var(--lava-card)',
+          alignItems: 'start', overflow: 'hidden'
         }}>
           <div>
             <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem' }}>{b.guest_name}</div>
@@ -151,13 +150,16 @@ export default function Prenotazioni() {
               👤 {b.guests_count} ospiti · {b.platform}
             </div>
           </div>
-          <div style={{ color: 'var(--gold)', fontFamily: "'Cormorant Garamond',serif", fontSize: '1.1rem' }}>
+          <div style={{ color: 'var(--gold)', fontFamily: "'Cormorant Garamond',serif", fontSize: '1.1rem', paddingTop: '0.1rem' }}>
             €{b.amount_total}
           </div>
-          <span className={`badge ${STATUSES[b.status] || 'badge-gray'}`}>
-            {STATUS_LABELS[b.status] || b.status}
-          </span>
-          <div style={{ display: 'flex', gap: '0.4rem' }}>
+          {/* Badge spostato a sinistra con paddingRight */}
+          <div style={{ paddingRight: '1rem' }}>
+            <span className={`badge ${STATUSES[b.status] || 'badge-gray'}`}>
+              {STATUS_LABELS[b.status] || b.status}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', paddingRight: '0.3rem' }}>
             <button className="btn-sm" onClick={() => openEdit(b)}>✏</button>
             <button className="btn-sm danger" onClick={() => cancelBooking(b.id)}>✕</button>
             <button className="btn-sm danger" onClick={() => hardDeleteBooking(b.id)}>🗑</button>
@@ -167,14 +169,11 @@ export default function Prenotazioni() {
 
       {/* MODAL */}
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Modifica' : 'Nuova prenotazione'}>
-
-        {/* ERRORE VISIBILE */}
         {saveError && (
           <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#e08080', lineHeight: 1.6 }}>
             {saveError}
           </div>
         )}
-
         <div className="form-grid">
           <div className="form-group">
             <label className="form-label">Nome ospite *</label>
@@ -223,13 +222,11 @@ export default function Prenotazioni() {
             </select>
           </div>
         </div>
-
         <div className="form-group" style={{ marginTop: '0.5rem' }}>
           <label className="form-label">Note</label>
           <textarea className="form-textarea" value={f.notes}
             onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
         </div>
-
         <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1.5rem' }}>
           <button className="btn-primary" onClick={save} style={{ flex: 1 }} disabled={saving}>
             {saving ? 'Salvataggio…' : 'Salva'}
@@ -242,7 +239,6 @@ export default function Prenotazioni() {
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
       `}</style>
-
     </div>
   )
 }
