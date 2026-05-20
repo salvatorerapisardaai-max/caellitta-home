@@ -74,8 +74,10 @@ export default function Prenotazioni() {
 
     setSaving(true)
 
+    const { nights, ...safe } = form
+    
     const payload = {
-      ...form,
+      ...safe,
       guests_count: Number(form.guests_count),
       amount_total: Number(form.amount_total) || 0,
       amount_deposit: Number(form.amount_deposit) || 0
@@ -264,7 +266,46 @@ export default function Prenotazioni() {
               onChange={e => setForm(p => ({ ...p, guest_name: e.target.value }))}
             />
           </div>
-
+          <div className="form-group">
+            <label className="form-label">Piattaforma</label>
+            <select
+              className="form-input"
+              value={f.platform}
+              onChange={e => setForm(p => ({ ...p, platform: e.target.value }))}
+            >
+              {PLATFORMS.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+          <label className="form-label">Stato</label>
+          <select
+              className="form-input"
+              value={f.status}
+              onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
+            >
+              <option value="confirmed">Confermata</option>
+              <option value="pending">In attesa</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Importo totale €</label>
+            <input
+              type="number"
+              className="form-input"
+              value={f.amount_total}
+              onChange={e => setForm(p => ({ ...p, amount_total: e.target.value }))}
+            />
+          </div>
+          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+            <label className="form-label">Note (opzionale)</label>
+            <textarea
+              className="form-textarea"
+              value={f.notes}
+              onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+            />
+          </div>
           <div className="form-group">
             <label className="form-label">Email</label>
             <input
@@ -296,7 +337,9 @@ export default function Prenotazioni() {
 
         </div>
 
-        <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1.2rem' }}>
+        <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1.2rem', flexWrap: 'wrap' }}>
+        
+          {/* SALVA */}
           <button
             className="btn-primary"
             style={{ flex: 1 }}
@@ -305,10 +348,28 @@ export default function Prenotazioni() {
           >
             {saving ? 'Salvataggio…' : editing ? 'Aggiorna' : 'Salva'}
           </button>
-
+        
+          {/* ANNULLA (CHIUDI MODAL) */}
           <button className="btn-cancel" onClick={() => setModal(false)}>
             Annulla
           </button>
+        
+          {/* ❗ ANNULLA PRENOTAZIONE (SOLO IN MODIFICA) */}
+          {editing && (
+            <button
+              className="btn-sm danger"
+              onClick={() => {
+                if (confirm('Vuoi annullare questa prenotazione?')) {
+                  setForm(p => ({ ...p, status: 'cancelled' }))
+                  setTimeout(save, 100)
+                }
+              }}
+              style={{ flexBasis: '100%' }}   // 👈 va sotto su mobile
+            >
+              Annulla prenotazione
+            </button>
+          )}
+        
         </div>
       </Modal>
 
