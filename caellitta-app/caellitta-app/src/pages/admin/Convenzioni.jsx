@@ -116,7 +116,7 @@ export default function Convenzioni() {
           booking_id:  assign.booking_id,
           template_id: tid,
           code:        booking.code + '-' + (t?.partner || 'CPR').substring(0,3).toUpperCase(),
-          status:      'active',
+          status:      'available',
         }
       })
       const { error } = await sb.from('guest_coupons').insert(inserts)
