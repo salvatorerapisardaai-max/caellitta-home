@@ -48,15 +48,12 @@ export default function Spese() {
     }
     setSaving(true)
     setSaveError('')
-
-    // Payload SOLO con colonne esistenti nella tabella
     const payload = {
       description: form.description,
       amount:      parseFloat(form.amount),
       category:    form.category,
       date:        form.date,
     }
-
     try {
       if (editing) {
         const { error } = await sb.from('expenses').update(payload).eq('id', editing)
@@ -92,7 +89,19 @@ export default function Spese() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.8rem' }}>
+      <style>{`
+        .spese-layout { display: flex; flex-direction: column; gap: 1rem; }
+        .spese-top { display: flex; gap: 1rem; align-items: stretch; }
+        .spese-cat { flex: 0 0 200px; }
+        .spese-list { flex: 1; min-width: 0; }
+        @media (max-width: 600px) {
+          .spese-top { flex-direction: column; }
+          .spese-cat { flex: none; }
+        }
+      `}</style>
+
+      {/* HEADER */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.8rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button className="btn-sm" onClick={() => setFilter('all')} style={filterMonth==='all'?{borderColor:'var(--gold)',color:'var(--gold)'}:{}}>Tutte</button>
           {months.slice(0,6).map(m => (
@@ -104,56 +113,68 @@ export default function Spese() {
         <button className="btn-primary" onClick={openNew}>+ Nuova spesa</button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.8fr', gap: '1.2rem', marginBottom: '1.2rem' }}>
-        {/* BY CATEGORY */}
-        <div className="card">
-          <div className="sec-title" style={{ marginBottom: '1rem' }}>Per categoria</div>
-          {byCat.length === 0 && <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)' }}>Nessuna spesa</p>}
-          {byCat.map(({ cat, total }) => {
-            const max = Math.max(...byCat.map(c => c.total))
-            return (
-              <div key={cat} style={{ marginBottom: '0.8rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.3rem' }}>
-                  <span style={{ color: 'var(--salt-dim)' }}>{cat}</span>
-                  <span style={{ color: '#e08080', fontFamily: "'Cormorant Garamond',serif" }}>€{total.toFixed(0)}</span>
-                </div>
-                <div style={{ height: 3, background: 'var(--lava-hover)', borderRadius: 2 }}>
-                  <div style={{ height: '100%', width: `${(total/max)*100}%`, background: CAT_COLORS[cat]||'var(--gold)', borderRadius: 2, transition: 'width 0.6s' }} />
-                </div>
-              </div>
-            )
-          })}
-          <div style={{ marginTop: '1.2rem', paddingTop: '1rem', borderTop: '1px solid var(--gold-dim)', display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.65rem', color: 'var(--salt-faint)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Totale</span>
-            <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.2rem', color: '#e08080' }}>€{totalFiltered.toFixed(2)}</span>
-          </div>
-        </div>
+      <div className="spese-layout">
+        <div className="spese-top">
 
-        {/* LIST */}
-        <div>
-          {filtered.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', color: 'var(--salt-faint)', padding: '3rem', fontSize: '0.85rem' }}>Nessuna spesa</div>
-          ) : filtered.map(e => (
-            <div key={e.id} style={{
-              display: 'grid', gridTemplateColumns: '1.5fr 0.8fr 1fr auto',
-              alignItems: 'center', gap: '1rem', padding: '0.85rem 1.2rem',
-              background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', marginBottom: '0.5rem',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: CAT_COLORS[e.category]||'#888', flexShrink: 0 }} />
-                <div style={{ fontSize: '0.8rem', color: 'var(--salt-dim)' }}>{e.description}</div>
-              </div>
-              <div style={{ fontSize: '0.68rem', color: 'var(--salt-faint)' }}>{fmtDate(e.date)}</div>
-              <span style={{ fontSize: '0.58rem', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '0.2rem 0.55rem', border: '1px solid var(--gold-dim)', color: CAT_COLORS[e.category]||'var(--salt-faint)' }}>
-                {e.category}
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', justifyContent: 'flex-end' }}>
-                <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', color: '#e08080' }}>−€{e.amount?.toFixed(2)}</span>
-                <button className="btn-sm" onClick={() => openEdit(e)}>✏</button>
-                <button className="btn-sm danger" onClick={() => del(e.id)}>✕</button>
-              </div>
+          {/* PER CATEGORIA */}
+          <div className="card spese-cat">
+            <div className="sec-title" style={{ marginBottom: '1rem' }}>Per categoria</div>
+            {byCat.length === 0 && <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)' }}>Nessuna spesa</p>}
+            {byCat.map(({ cat, total }) => {
+              const max = Math.max(...byCat.map(c => c.total))
+              return (
+                <div key={cat} style={{ marginBottom: '0.8rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.3rem' }}>
+                    <span style={{ color: 'var(--salt-dim)' }}>{cat}</span>
+                    <span style={{ color: '#e08080', fontFamily: "'Cormorant Garamond',serif" }}>€{total.toFixed(0)}</span>
+                  </div>
+                  <div style={{ height: 3, background: 'var(--lava-hover)', borderRadius: 2 }}>
+                    <div style={{ height: '100%', width: `${(total/max)*100}%`, background: CAT_COLORS[cat]||'var(--gold)', borderRadius: 2, transition: 'width 0.6s' }} />
+                  </div>
+                </div>
+              )
+            })}
+            <div style={{ marginTop: '1.2rem', paddingTop: '1rem', borderTop: '1px solid var(--gold-dim)', display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.65rem', color: 'var(--salt-faint)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Totale</span>
+              <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.2rem', color: '#e08080' }}>€{totalFiltered.toFixed(2)}</span>
             </div>
-          ))}
+          </div>
+
+          {/* LIST */}
+          <div className="spese-list">
+            {filtered.length === 0 ? (
+              <div className="card" style={{ textAlign: 'center', color: 'var(--salt-faint)', padding: '2rem', fontSize: '0.85rem' }}>
+                Nessuna spesa
+              </div>
+            ) : filtered.map(e => (
+              <div key={e.id} style={{
+                background: 'var(--lava-card)', border: '1px solid var(--gold-dim)',
+                marginBottom: '0.5rem', padding: '0.85rem 1rem',
+              }}>
+                {/* Riga top: descrizione + importo + bottoni */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: CAT_COLORS[e.category]||'#888', flexShrink: 0 }} />
+                    <div style={{ fontSize: '0.82rem', color: 'var(--salt-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {e.description}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                    <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem', color: '#e08080' }}>−€{e.amount?.toFixed(2)}</span>
+                    <button className="btn-sm" onClick={() => openEdit(e)}>✏</button>
+                    <button className="btn-sm danger" onClick={() => del(e.id)}>✕</button>
+                  </div>
+                </div>
+                {/* Riga bottom: data + categoria */}
+                <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.4rem', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--salt-faint)' }}>{fmtDate(e.date)}</span>
+                  <span style={{ fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.15rem 0.5rem', border: '1px solid var(--gold-dim)', color: CAT_COLORS[e.category]||'var(--salt-faint)' }}>
+                    {e.category}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
