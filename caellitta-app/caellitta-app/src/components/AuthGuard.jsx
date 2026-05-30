@@ -7,12 +7,12 @@ export default function AuthGuard({ children }) {
 
   useEffect(() => {
     // Leggi sessione corrente
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    sb.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
     })
 
     // Ascolta cambiamenti (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
       setSession(session)
     })
 
