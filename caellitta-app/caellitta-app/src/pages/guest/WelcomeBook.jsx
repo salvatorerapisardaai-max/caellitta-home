@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { sb } from '../../lib/supabase'
+import heroImg from '../../assets/acicastello.jpg'
 
 const CHAPTERS = [
   { id: 'welcome',    icon: '🏠', labelIt: 'Benvenuto',   labelEn: 'Welcome' },
