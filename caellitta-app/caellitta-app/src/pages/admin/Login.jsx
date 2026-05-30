@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { sb } from '../../lib/supabase'
 
 export default function Login() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -12,8 +14,12 @@ export default function Login() {
     setLoading(true)
     setError('')
     const { error } = await sb.auth.signInWithPassword({ email, password })
-    if (error) setError('Credenziali non valide. Riprova.')
-    setLoading(false)
+    if (error) {
+      setError('Credenziali non valide. Riprova.')
+      setLoading(false)
+    } else {
+      navigate('/')
+    }
   }
 
   return (
@@ -27,14 +33,12 @@ export default function Login() {
       position: 'relative',
       overflow: 'hidden',
     }}>
-      {/* Grain overlay */}
       <div style={{
         position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
         backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
         opacity: 0.03,
       }} />
 
-      {/* Radial glow */}
       <div style={{
         position: 'absolute', top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
@@ -48,7 +52,6 @@ export default function Login() {
         width: '100%', maxWidth: 420,
         padding: '0 1.5rem',
       }}>
-        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
           <div style={{
             fontFamily: "'Cormorant Garamond', serif",
@@ -66,7 +69,6 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Card */}
         <div style={{
           background: 'var(--lava-card)',
           border: '1px solid rgba(201,171,114,0.12)',
@@ -79,7 +81,6 @@ export default function Login() {
           }} />
 
           <form onSubmit={handleLogin}>
-            {/* Email */}
             <div style={{ marginBottom: '1.2rem' }}>
               <label style={{
                 display: 'block', fontSize: '0.62rem',
@@ -106,7 +107,6 @@ export default function Login() {
               />
             </div>
 
-            {/* Password */}
             <div style={{ marginBottom: '1.8rem' }}>
               <label style={{
                 display: 'block', fontSize: '0.62rem',
@@ -133,7 +133,6 @@ export default function Login() {
               />
             </div>
 
-            {/* Error */}
             {error && (
               <div style={{
                 fontSize: '0.75rem', color: '#c97a7a',
@@ -143,7 +142,6 @@ export default function Login() {
               </div>
             )}
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
