@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { sb } from '../lib/supabase'
 
 export default function AuthGuard({ children }) {
   const [session, setSession] = useState(undefined) // undefined = loading
