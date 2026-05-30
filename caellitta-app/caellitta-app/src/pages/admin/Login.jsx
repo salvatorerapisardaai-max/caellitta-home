@@ -11,7 +11,7 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await sb.auth.signInWithPassword({ email, password })
     if (error) setError('Credenziali non valide. Riprova.')
     setLoading(false)
   }
