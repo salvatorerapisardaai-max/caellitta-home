@@ -124,7 +124,7 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang }) {
       {/* HERO con foto acicastello */}
       <div style={{ minHeight: '62vw', maxHeight: 340, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', overflow: 'hidden' }}>
         <img
-          src="/acicastello.jpg"
+          src={heroImg}
           alt="Aci Castello"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
         />
