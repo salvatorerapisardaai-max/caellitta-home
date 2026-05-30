@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { sb } from '../lib/supabase'
 
 const NAV = [
   { to: '/',             label: 'Dashboard',    icon: GridIcon,  exact: true },
