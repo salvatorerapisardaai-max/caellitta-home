@@ -80,7 +80,7 @@ export default function AdminLayout() {
 
 function SidebarContent({ onNav }) {
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await sb.auth.signOut()
   }
 
   return (
