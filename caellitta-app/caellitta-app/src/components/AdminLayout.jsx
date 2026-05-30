@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
 const NAV = [
   { to: '/',             label: 'Dashboard',    icon: GridIcon,  exact: true },
@@ -78,12 +79,17 @@ export default function AdminLayout() {
 }
 
 function SidebarContent({ onNav }) {
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+  }
+
   return (
     <>
       <div style={{ padding: '1.8rem 1.5rem 1.2rem', borderBottom: '1px solid var(--gold-dim)' }}>
         <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)' }}>Caellitta</div>
         <div style={{ fontSize: '0.55rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--salt-faint)', marginTop: '0.2rem' }}>Gestionale</div>
       </div>
+
       <nav style={{ flex: 1, padding: '1.2rem 0' }}>
         <div style={{ fontSize: '0.52rem', letterSpacing: '0.3em', textTransform: 'uppercase', color: 'var(--salt-faint)', padding: '0 1.4rem', marginBottom: '0.5rem' }}>Menu</div>
         {NAV.map(item => (
@@ -100,9 +106,30 @@ function SidebarContent({ onNav }) {
           </NavLink>
         ))}
       </nav>
+
+      {/* PORTALE OSPITI */}
       <div style={{ padding: '1.2rem 1.4rem', borderTop: '1px solid var(--gold-dim)' }}>
         <div style={{ fontSize: '0.55rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--salt-faint)', marginBottom: '0.3rem' }}>Portale ospiti</div>
         <a href="/ospite" target="_blank" style={{ fontSize: '0.7rem', color: 'var(--gold)', textDecoration: 'none' }}>/ospite →</a>
+      </div>
+
+      {/* LOGOUT */}
+      <div style={{ padding: '1rem 1.4rem', borderTop: '1px solid var(--gold-dim)' }}>
+        <button
+          onClick={handleLogout}
+          style={{
+            width: '100%', padding: '0.55rem 1rem',
+            background: 'none', border: '1px solid rgba(201,171,114,0.2)',
+            color: 'rgba(240,235,225,0.4)', fontSize: '0.62rem',
+            letterSpacing: '0.2em', textTransform: 'uppercase',
+            cursor: 'pointer', fontFamily: "'Jost', sans-serif",
+            transition: 'border-color 0.3s, color 0.3s',
+          }}
+          onMouseOver={e => { e.currentTarget.style.borderColor = 'rgba(201,171,114,0.5)'; e.currentTarget.style.color = 'var(--gold)' }}
+          onMouseOut={e => { e.currentTarget.style.borderColor = 'rgba(201,171,114,0.2)'; e.currentTarget.style.color = 'rgba(240,235,225,0.4)' }}
+        >
+          Esci
+        </button>
       </div>
     </>
   )
@@ -125,24 +152,3 @@ function CalIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill
 function EuroIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="9"/><path d="M14.5 8.5a4 4 0 1 0 0 7"/><line x1="8" y1="12" x2="15" y2="12"/><line x1="8" y1="14.5" x2="13" y2="14.5"/></svg> }
 function TagIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5"/></svg> }
 function MsgIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> }
-import { supabase } from '../lib/supabase'
-
-const handleLogout = async () => {
-  await supabase.auth.signOut()
-}
-
-// Nel JSX, in fondo alla sidebar:
-<button onClick={handleLogout} style={{
-  background: 'none',
-  border: '1px solid rgba(201,171,114,0.2)',
-  color: 'rgba(240,235,225,0.4)',
-  padding: '0.5rem 1rem',
-  fontSize: '0.62rem',
-  letterSpacing: '0.2em',
-  textTransform: 'uppercase',
-  cursor: 'pointer',
-  fontFamily: "'Jost', sans-serif",
-  width: '100%',
-}}>
-  Esci
-</button>
