@@ -7,8 +7,8 @@
 ![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?logo=supabase&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 
-> ℹ️ Personal product for **[Caellitta Home](https://caellittahome.com)** (Aci Castello, Sicily). Published as a portfolio reference — guest data and credentials are handled off-repo via environment variables.
-> Prodotto personale per **[Caellitta Home](https://caellittahome.com)** (Aci Castello, Sicilia). Pubblicato come riferimento di portfolio — dati ospiti e credenziali restano fuori dal repo, gestiti tramite variabili d'ambiente.
+> ℹ️ Personal product for **[Caellitta Home](https://www.caellittahome.com)** (Aci Castello, Sicily). Published as a portfolio reference — guest data and credentials are handled off-repo via environment variables.
+> Prodotto personale per **[Caellitta Home](https://www.caellittahome.com)** (Aci Castello, Sicilia). Pubblicato come riferimento di portfolio — dati ospiti e credenziali restano fuori dal repo, gestiti tramite variabili d'ambiente.
 
 ---
 
