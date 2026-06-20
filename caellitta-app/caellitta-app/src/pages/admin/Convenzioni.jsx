@@ -139,19 +139,26 @@ export default function Convenzioni() {
             <div key={t.id} style={{ display:'flex', background:'var(--lava-card)', border:`1px solid ${t.active ? 'var(--gold-dim)' : 'rgba(90,90,90,.2)'}`, marginBottom:'0.5rem', overflow:'hidden', opacity: t.active ? 1 : 0.5 }}>
               <div style={{ width:3, background: t.active ? 'var(--gold)' : '#555', flexShrink:0 }} />
               <div style={{ padding:'1rem 1.2rem', flex:1, minWidth:0 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'1rem' }}>
-                  <div style={{ minWidth:0 }}>
-                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.05rem', marginBottom:'0.25rem' }}>{t.title}</div>
+                {/* Riga 1: titolo + descrizione a sinistra, azioni a destra */}
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'0.8rem' }}>
+                  <div style={{ minWidth:0, flex:1 }}>
+                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.05rem', marginBottom: t.description ? '0.25rem' : 0, wordBreak:'break-word' }}>{t.title}</div>
                     {t.description && <div style={{ fontSize:'0.76rem', color:'var(--salt-dim)', lineHeight:1.7 }}>{t.description}</div>}
                   </div>
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'0.5rem', flexShrink:0 }}>
-                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.2rem', color:'var(--gold)' }}>{t.discount}</div>
-                    <div style={{ display:'flex', gap:'0.4rem' }}>
-                      <button className="btn-sm" onClick={() => openEdit(t)}>✏</button>
-                      <button className="btn-sm danger" onClick={() => deleteTemplate(t.id)}>✕</button>
-                    </div>
+                  <div style={{ display:'flex', gap:'0.4rem', flexShrink:0 }}>
+                    <button className="btn-sm" onClick={() => openEdit(t)}>✏</button>
+                    <button className="btn-sm danger" onClick={() => deleteTemplate(t.id)}>✕</button>
                   </div>
                 </div>
+
+                {/* Riga 2: dettaglio/valore a PIENA LARGHEZZA — niente più colonna stretta a destra,
+                    così i testi lunghi (livello · quota · inclusioni) vanno a capo bene anche su mobile */}
+                {t.discount && (
+                  <div style={{ marginTop:'0.6rem', fontFamily:"'Cormorant Garamond',serif", fontSize:'0.98rem', color:'var(--gold)', lineHeight:1.5, wordBreak:'break-word' }}>
+                    {t.discount}
+                  </div>
+                )}
+
                 {gCoupons.filter(gc => gc.template_id === t.id && gc.status === 'available').length > 0 && (
                   <div style={{ marginTop:'0.8rem', paddingTop:'0.8rem', borderTop:'1px solid var(--gold-dim)' }}>
                     <div style={{ fontSize:'0.55rem', letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--salt-faint)', marginBottom:'0.4rem' }}>Assegnato a</div>
@@ -210,8 +217,8 @@ export default function Convenzioni() {
           <input className="form-input" value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Es. Pranzo sul mare" />
         </div>
         <div className="form-group">
-          <label className="form-label">Sconto * (es. 10%, €15, Ingresso omaggio)</label>
-          <input className="form-input" value={form.discount} onChange={e=>setForm(p=>({...p,discount:e.target.value}))} placeholder="10%" />
+          <label className="form-label">Dettaglio * (es. livello · durata · inclusioni)</label>
+          <input className="form-input" value={form.discount} onChange={e=>setForm(p=>({...p,discount:e.target.value}))} placeholder="Es. Facile · 2-3h · attrezzatura e assicurazione incluse" />
         </div>
         <div className="form-group">
           <label className="form-label">Descrizione per l'ospite</label>
@@ -246,7 +253,7 @@ export default function Convenzioni() {
               <label key={t.id} style={{ display:'flex', alignItems:'center', gap:'0.8rem', cursor:'pointer', padding:'0.6rem 0.8rem', background: assign.template_ids.includes(t.id) ? 'rgba(201,171,114,.08)' : 'var(--lava-card)', border:`1px solid ${assign.template_ids.includes(t.id) ? 'var(--gold-dim2)' : 'var(--gold-dim)'}`, transition:'all .2s' }}>
                 <input type="checkbox" checked={assign.template_ids.includes(t.id)} onChange={() => toggleTemplate(t.id)} style={{ accentColor:'var(--gold)' }} />
                 <span style={{ flex:1, fontSize:'0.8rem', color:'var(--salt-dim)' }}>{t.partner} — {t.title}</span>
-                <span style={{ fontSize:'0.75rem', color:'var(--gold)', fontFamily:"'Cormorant Garamond',serif" }}>{t.discount}</span>
+                <span style={{ fontSize:'0.75rem', color:'var(--gold)', fontFamily:"'Cormorant Garamond',serif", textAlign:'right' }}>{t.discount}</span>
               </label>
             ))}
           </div>
