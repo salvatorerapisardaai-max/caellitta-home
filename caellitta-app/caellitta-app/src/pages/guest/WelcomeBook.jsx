@@ -1,7 +1,28 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { sb } from '../../lib/supabase'
-import heroImg from '../../assets/acicastello.jpg'
+import heroFallback from '../../assets/acicastello.jpg'
+
+// Immagine del Benvenuto servita da Supabase Storage (bucket pubblico "site-media").
+// Per cambiarla basta caricare un file chiamato esattamente "benvenuto.jpg" nel bucket:
+// nessuna modifica al codice, nessun deploy. Finché il file non esiste, si usa il fallback.
+const HERO_URL = 'https://ejjatrfeeatgiqpomibd.supabase.co/storage/v1/object/public/site-media/benvenuto.jpg'
+
+// Numero WhatsApp principale di Caellitta Home (solo cifre, per i link wa.me)
+const CAELLITTA_WA = '393520124403'
+
+// Icone per categoria (coupon_categories.name)
+const CAT_ICONS = {
+  'Barca & Mare':     '⛵',
+  'Etna & Avventura': '🌋',
+  'Dal Cielo':        '🚁',
+  'Sapori & Cantine': '🍷',
+}
+// Ordine di presentazione delle categorie nel portale ospiti
+const CAT_ORDER = ['Barca & Mare', 'Etna & Avventura', 'Dal Cielo', 'Sapori & Cantine']
+
+// Un coupon è "usato" se lo dice lo status (allineato al gestionale) o se ha used_at
+const isCouponUsed = (c) => c?.status === 'used' || !!c?.used_at
 
 const CHAPTERS = [
   { id: 'welcome',    icon: '🏠', labelIt: 'Benvenuto',   labelEn: 'Welcome' },
@@ -29,14 +50,16 @@ export default function WelcomeBook() {
     if (!b) { navigate('/ospite'); return }
     setBooking(b)
     const { data: gc } = await sb.from('guest_coupons')
-      .select('*, coupon_templates(*)').eq('booking_id', b.id)
+      .select('*, coupon_templates(*, coupon_categories(name,color,slug))').eq('booking_id', b.id)
     setCoupons(gc || [])
     setLoading(false)
   }
 
   async function useCoupon(id) {
-    await sb.from('guest_coupons').update({ used_at: new Date().toISOString() }).eq('id', id)
-    setCoupons(prev => prev.map(c => c.id === id ? { ...c, used_at: new Date().toISOString() } : c))
+    const now = new Date().toISOString()
+    // Allineo status e used_at: così nel gestionale il coupon risulta "Usato"
+    await sb.from('guest_coupons').update({ status: 'used', used_at: now }).eq('id', id)
+    setCoupons(prev => prev.map(c => c.id === id ? { ...c, status: 'used', used_at: now } : c))
   }
 
   if (loading) return (
@@ -71,7 +94,7 @@ export default function WelcomeBook() {
         {chapter === 'welcome'    && <ChWelcome booking={booking} ci={ci} co={co} wifiShown={wifiShown} setWifiShown={setWifiShown} lang={lang} />}
         {chapter === 'casa'       && <ChCasa lang={lang} />}
         {chapter === 'regole'     && <ChRegole lang={lang} />}
-        {chapter === 'esperienze' && <ChEsperienze setChapter={setChapter} lang={lang} />}
+        {chapter === 'esperienze' && <ChEsperienze lang={lang} />}
         {chapter === 'coupon'     && <ChCoupon coupons={coupons} useCoupon={useCoupon} lang={lang} />}
         {chapter === 'contatti'   && <ChContatti lang={lang} />}
       </div>
@@ -96,7 +119,7 @@ export default function WelcomeBook() {
             <span style={{ fontSize: '0.48rem', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
               {lang === 'it' ? ch.labelIt : ch.labelEn}
             </span>
-            {ch.id === 'coupon' && coupons.filter(c => !c.used_at).length > 0 && (
+            {ch.id === 'coupon' && coupons.filter(c => !isCouponUsed(c)).length > 0 && (
               <span style={{ position: 'absolute', top: 6, right: 8, width: 8, height: 8, background: 'var(--gold)', borderRadius: '50%' }} />
             )}
           </button>
@@ -121,10 +144,11 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang }) {
 
   return (
     <div>
-      {/* HERO con foto acicastello */}
+      {/* HERO — immagine dal bucket "site-media" con fallback all'asset locale */}
       <div style={{ minHeight: '62vw', maxHeight: 340, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', overflow: 'hidden' }}>
         <img
-          src={heroImg}
+          src={HERO_URL}
+          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = heroFallback }}
           alt="Aci Castello"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
         />
@@ -241,13 +265,6 @@ function ChCasa({ lang }) {
       textIt: 'Completamente attrezzata: pentole, stoviglie, macchina del caffè, friggitrice ad aria, piano a induzione, forno.',
       textEn: 'Fully equipped: pots, dishes, coffee machine, air fryer, induction hob, oven.',
     },
-    {
-      icon: '🌅',
-      titleIt: 'Balcone',
-      titleEn: 'Balcony',
-      textIt: 'Tavolo e sedie disponibili. Perfetto per colazione e aperitivo con vista sul mare.',
-      textEn: 'Table and chairs available. Perfect for breakfast or aperitivo with sea views.',
-    },
   ]
 
   return (
@@ -287,7 +304,7 @@ function ChRegole({ lang }) {
   const it = lang === 'it'
   const rules = [
     { icon: '🔇', titleIt: 'Silenzio notturno', titleEn: 'Quiet hours', textIt: 'Rispetto del silenzio dalla sera. I vicini ringraziano.', textEn: 'Please respect quiet hours in the evening. Your neighbours will thank you.' },
-    { icon: '🚭', titleIt: 'No fumo in casa', titleEn: 'No smoking indoors', textIt: 'Consentito solo in balcone, con le dovute attenzioni.', textEn: 'Smoking allowed on the balcony only, with due care.' },
+    { icon: '🚭', titleIt: 'No fumo in casa', titleEn: 'No smoking indoors', textIt: 'Ti chiediamo di non fumare all\'interno dell\'appartamento.', textEn: 'Please do not smoke inside the apartment.' },
     { icon: '🐾', titleIt: 'Animali', titleEn: 'Pets', textIt: 'Benvenuti solo se concordato anticipatamente.', textEn: 'Welcome only if agreed in advance.' },
     { icon: '🗑', titleIt: 'Raccolta differenziata', titleEn: 'Recycling', textIt: 'Umido, plastica, carta, vetro. Calendario raccolta in bacheca.', textEn: 'Organic, plastic, paper, glass. Collection calendar on the noticeboard.' },
     { icon: '🏡', titleIt: 'Cura degli spazi', titleEn: 'Care of the space', textIt: 'Ti chiediamo di lasciare la casa nelle stesse condizioni in cui l\'hai trovata.', textEn: 'Please leave the house in the same condition as you found it.' },
@@ -324,69 +341,97 @@ function ChRegole({ lang }) {
 }
 
 // ── ESPERIENZE ────────────────────────────────────────────
+// Data-driven: legge le convenzioni attive da Supabase (coupon_templates),
+// le stesse che gestisci nel gestionale → sempre allineate.
 
-function ChEsperienze({ setChapter, lang }) {
+function ChEsperienze({ lang }) {
   const it = lang === 'it'
-  const places = [
-    {
-      tag: it ? '🌊 Mare' : '🌊 Sea',
-      name: it ? 'Lido convenzionato' : 'Partner beach club',
-      desc: it ? 'A 5 minuti a piedi. Ingresso agevolato per gli ospiti Caellitta. Lettino e ombrellone inclusi.' : '5 minutes on foot. Discounted entry for Caellitta guests. Sun lounger and umbrella included.',
-      pills: it ? ['5 min a piedi', 'Ingresso agevolato'] : ['5 min walk', 'Discounted entry'],
-    },
-    {
-      tag: it ? '⛵ Barca' : '⛵ Boat',
-      name: it ? 'Giro delle Isole Ciclopi' : 'Cyclops Islands tour',
-      desc: it ? 'Escursione in barca con il nostro partner. Scopri le grotte marine e i fondali cristallini.' : 'Boat trip with our partner. Discover sea caves and crystal-clear waters.',
-      pills: it ? ['Prenotabile via WhatsApp', 'Coupon incluso'] : ['Book via WhatsApp', 'Coupon included'],
-    },
-    {
-      tag: it ? '🌋 Etna' : '🌋 Etna',
-      name: it ? "Tour dell'Etna" : 'Etna Tour',
-      desc: it ? 'Escursione guidata sull\'Etna con il nostro partner locale. Partenza e rientro dalla casa.' : 'Guided excursion on Etna with our local partner. Departure and return from the house.',
-      pills: it ? ['Guida locale', 'Coupon incluso'] : ['Local guide', 'Coupon included'],
-    },
-    {
-      tag: it ? '🍽 Ristorante' : '🍽 Restaurant',
-      name: it ? 'Da inserire' : 'To be added',
-      desc: it ? 'Il nostro ristorante del cuore. Cucina siciliana autentica, vista sul mare.' : 'Our favourite restaurant. Authentic Sicilian cuisine, sea view.',
-      pills: it ? ['Coupon 10%', 'Prenotazione consigliata'] : ['10% coupon', 'Reservation recommended'],
-    },
-  ]
+  const [cats, setCats]       = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await sb
+        .from('coupon_templates')
+        .select('id, partner, title, title_en, discount, description, description_en, coupon_categories(name,color,slug)')
+        .eq('active', true)
+        .order('title')
+
+      const groups = {}
+      ;(data || []).forEach(t => {
+        const name  = t.coupon_categories?.name  || 'Altro'
+        const color = t.coupon_categories?.color || '#c9ab72'
+        if (!groups[name]) groups[name] = { name, color, items: [] }
+        groups[name].items.push(t)
+      })
+
+      const ordered = Object.values(groups).sort((a, b) => {
+        const ia = CAT_ORDER.indexOf(a.name); const ib = CAT_ORDER.indexOf(b.name)
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+      })
+      setCats(ordered)
+      setLoading(false)
+    })()
+  }, [])
+
+  const waLink = (title) => {
+    const msg = it
+      ? `Ciao! Sono ospite di Caellitta Home e vorrei informazioni sull'esperienza: ${title}`
+      : `Hello! I'm a Caellitta Home guest and I'd like information about this experience: ${title}`
+    return `https://wa.me/${CAELLITTA_WA}?text=${encodeURIComponent(msg)}`
+  }
 
   return (
     <div>
       <div style={{ minHeight: '45vw', maxHeight: 240, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#0c2e1e 0%,#13100e 100%)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
-          {it ? 'I nostri preferiti' : 'Our favourites'}
+          {it ? 'Avventure siciliane' : 'Sicilian adventures'}
         </p>
         <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05 }}>
           {it ? <>Esperienze da <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>vivere</em></> : <>Experiences to <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>live</em></>}
         </h2>
       </div>
+
       <div style={{ padding: '0 1.5rem' }}>
         <div style={{ width: 28, height: 1, background: 'var(--gold)', opacity: .55, margin: '1.5rem 0' }} />
-        {places.map((p, i) => (
-          <div key={i} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', marginBottom: '0.75rem', overflow: 'hidden', display: 'flex' }}>
-            <div style={{ width: 3, background: 'var(--gold)', flexShrink: 0 }} />
-            <div style={{ padding: '1.1rem 1.2rem', flex: 1 }}>
-              <div style={{ fontSize: '0.55rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.25rem' }}>{p.tag}</div>
-              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.1rem', marginBottom: '0.3rem' }}>{p.name}</div>
-              <div style={{ fontSize: '0.76rem', color: 'var(--salt-dim)', lineHeight: 1.72, fontWeight: 200 }}>{p.desc}</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.8rem' }}>
-                {p.pills.map(pill => (
-                  <span key={pill} style={{ fontSize: '0.6rem', letterSpacing: '0.1em', color: 'rgba(201,171,114,.6)', background: 'rgba(201,171,114,.06)', border: '1px solid rgba(201,171,114,.15)', padding: '0.22rem 0.6rem' }}>
-                    {pill}
-                  </span>
-                ))}
-              </div>
-              {p.pills.some(pl => pl.toLowerCase().includes('coupon')) && (
-                <button onClick={() => setChapter('coupon')} style={{ marginTop: '0.85rem', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--lava)', background: 'var(--gold)', border: 'none', padding: '0.38rem 0.85rem', cursor: 'pointer' }}>
-                  {it ? 'Vedi coupon →' : 'See coupons →'}
-                </button>
-              )}
+
+        {loading ? (
+          <div style={{ color: 'var(--salt-faint)', fontStyle: 'italic', fontSize: '0.85rem', padding: '1rem 0' }}>
+            {it ? 'Caricamento esperienze…' : 'Loading experiences…'}
+          </div>
+        ) : cats.length === 0 ? (
+          <div style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '2rem', textAlign: 'center', color: 'var(--salt-faint)', fontSize: '0.85rem' }}>
+            {it ? 'Esperienze in arrivo a breve.' : 'Experiences coming soon.'}
+          </div>
+        ) : cats.map(cat => (
+          <div key={cat.name} style={{ marginBottom: '1.6rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.6rem', letterSpacing: '0.26em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.8rem' }}>
+              <span style={{ fontSize: '0.95rem' }}>{CAT_ICONS[cat.name] || '✨'}</span>
+              {cat.name}
             </div>
+
+            {cat.items.map(t => {
+              const title = it ? t.title : (t.title_en || t.title)
+              const desc  = it ? t.description : (t.description_en || t.description)
+              return (
+                <div key={t.id} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', marginBottom: '0.75rem', overflow: 'hidden', display: 'flex' }}>
+                  <div style={{ width: 3, background: cat.color, flexShrink: 0 }} />
+                  <div style={{ padding: '1.1rem 1.2rem', flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.1rem', marginBottom: '0.3rem' }}>{title}</div>
+                    {t.discount && (
+                      <div style={{ fontSize: '0.68rem', color: 'rgba(201,171,114,.75)', lineHeight: 1.5, marginBottom: '0.45rem' }}>{t.discount}</div>
+                    )}
+                    {desc && (
+                      <div style={{ fontSize: '0.76rem', color: 'var(--salt-dim)', lineHeight: 1.72, fontWeight: 200 }}>{desc}</div>
+                    )}
+                    <a href={waLink(title)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: '0.85rem', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--lava)', background: 'var(--gold)', textDecoration: 'none', padding: '0.4rem 0.9rem' }}>
+                      {it ? 'Prenota via WhatsApp →' : 'Book via WhatsApp →'}
+                    </a>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         ))}
       </div>
@@ -398,7 +443,6 @@ function ChEsperienze({ setChapter, lang }) {
 
 function ChCoupon({ coupons, useCoupon, lang }) {
   const it = lang === 'it'
-  const ICONS = { Ristorante: '🍽', Barca: '⛵', Etna: '🌋', Mare: '🌊', Bar: '☕', Altro: '🎁' }
 
   return (
     <div>
@@ -426,25 +470,27 @@ function ChCoupon({ coupons, useCoupon, lang }) {
         ) : (
           <>
             <div style={{ fontSize: '0.58rem', letterSpacing: '0.35em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.9rem' }}>
-              {coupons.filter(c => !c.used_at).length} {it ? 'coupon disponibili' : 'coupons available'} · {coupons.filter(c => c.used_at).length} {it ? 'utilizzati' : 'used'}
+              {coupons.filter(c => !isCouponUsed(c)).length} {it ? 'coupon disponibili' : 'coupons available'} · {coupons.filter(c => isCouponUsed(c)).length} {it ? 'utilizzati' : 'used'}
             </div>
             {coupons.map(c => {
               const t = c.coupon_templates
-              const used = !!c.used_at
-              const cat = t?.category || 'Altro'
-              const icon = ICONS[cat] || '🎁'
-              const discount = t?.discount_type === 'percent' ? `${t.discount_value}% ${it ? 'di sconto' : 'off'}` : t?.discount_type === 'fixed' ? `€${t.discount_value} ${it ? 'di sconto' : 'off'}` : t?.description
+              const used = isCouponUsed(c)
+              const catName = t?.coupon_categories?.name || 'Altro'
+              const icon = CAT_ICONS[catName] || '🎁'
+              const title = it ? t?.title : (t?.title_en || t?.title)
+              const desc  = it ? t?.description : (t?.description_en || t?.description)
+              const value = t?.discount
               return (
                 <div key={c.id} style={{ background: used ? 'rgba(240,235,225,.03)' : 'var(--lava-card)', border: `1px solid ${used ? 'rgba(201,171,114,.08)' : 'var(--gold-dim)'}`, padding: '1.3rem', marginBottom: '0.75rem', overflow: 'hidden', position: 'relative', opacity: used ? 0.5 : 1 }}>
                   {!used && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,var(--gold),transparent)' }} />}
-                  <div style={{ fontSize: '0.55rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.35rem' }}>{icon} {cat}</div>
-                  <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.2rem', marginBottom: '0.3rem' }}>{t?.name}</div>
-                  <div style={{ fontSize: '0.76rem', color: 'var(--salt-dim)', lineHeight: 1.72, fontWeight: 200, marginBottom: '0.8rem' }}>{t?.description}</div>
-                  <div style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: used ? 'rgba(201,171,114,.3)' : 'var(--gold)', textDecoration: used ? 'line-through' : 'none', marginBottom: '0.8rem' }}>{discount}</div>
+                  <div style={{ fontSize: '0.55rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.35rem' }}>{icon} {catName}</div>
+                  <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.2rem', marginBottom: '0.3rem' }}>{title}</div>
+                  {desc && <div style={{ fontSize: '0.76rem', color: 'var(--salt-dim)', lineHeight: 1.72, fontWeight: 200, marginBottom: '0.8rem' }}>{desc}</div>}
+                  {value && <div style={{ fontSize: '0.72rem', color: used ? 'rgba(201,171,114,.3)' : 'rgba(201,171,114,.85)', marginBottom: '0.8rem', lineHeight: 1.5 }}>{value}</div>}
                   <div style={{ fontFamily: 'monospace', fontSize: '0.72rem', background: 'rgba(201,171,114,.08)', color: 'var(--gold)', padding: '0.35rem 0.75rem', display: 'inline-block', marginBottom: '0.8rem', letterSpacing: '0.08em' }}>{c.code}</div>
                   {used ? (
                     <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)', padding: '0.4rem 0' }}>
-                      ✓ {it ? 'Utilizzato il' : 'Used on'} {new Date(c.used_at).toLocaleDateString(it ? 'it-IT' : 'en-GB')}
+                      ✓ {it ? 'Utilizzato' : 'Used'}{c.used_at ? ` ${it ? 'il' : 'on'} ${new Date(c.used_at).toLocaleDateString(it ? 'it-IT' : 'en-GB')}` : ''}
                     </div>
                   ) : (
                     <button onClick={() => { if (confirm(it ? 'Segnare questo coupon come utilizzato?' : 'Mark this coupon as used?')) useCoupon(c.id) }} style={{ width: '100%', padding: '0.55rem', border: '1px solid rgba(201,171,114,.3)', background: 'transparent', color: 'rgba(240,235,225,.7)', fontFamily: 'Jost,sans-serif', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all .2s' }}
@@ -476,8 +522,8 @@ function ChContatti({ lang }) {
       nameEn: 'Caellitta Home',
       roleIt: 'WhatsApp · Contatto principale',
       roleEn: 'WhatsApp · Main contact',
-      num: '+39 XXX XXX XXXX',
-      link: 'https://wa.me/39',
+      num: '+39 352 0124403',
+      link: `https://wa.me/${CAELLITTA_WA}?text=${encodeURIComponent(it ? 'Ciao! Scrivo da Caellitta Home.' : 'Hello! Writing from Caellitta Home.')}`,
       action: 'WhatsApp',
     },
     {
@@ -486,8 +532,8 @@ function ChContatti({ lang }) {
       nameEn: 'Salvatore',
       roleIt: 'Host',
       roleEn: 'Host',
-      num: '+39 XXX XXX XXXX',
-      link: 'tel:+39',
+      num: '+39 327 931 2378',
+      link: 'tel:+393279312378',
       action: it ? 'Chiama' : 'Call',
     },
     {
@@ -496,8 +542,8 @@ function ChContatti({ lang }) {
       nameEn: 'Rosario',
       roleIt: 'Host',
       roleEn: 'Host',
-      num: '+39 XXX XXX XXXX',
-      link: 'tel:+39',
+      num: '+39 379 144 5274',
+      link: 'tel:+393791445274',
       action: it ? 'Chiama' : 'Call',
     },
   ]
@@ -534,7 +580,7 @@ function ChContatti({ lang }) {
               <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)', marginTop: '0.1rem' }}>{it ? c.roleIt : c.roleEn}</div>
               <div style={{ fontSize: '0.78rem', color: 'var(--gold)', marginTop: '0.3rem', fontFamily: 'monospace' }}>{c.num}</div>
             </div>
-            <a href={c.link} style={{ background: 'rgba(201,171,114,.08)', border: '1px solid rgba(201,171,114,.25)', color: 'var(--gold)', padding: '0.5rem 0.9rem', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+            <a href={c.link} target="_blank" rel="noopener noreferrer" style={{ background: 'rgba(201,171,114,.08)', border: '1px solid rgba(201,171,114,.25)', color: 'var(--gold)', padding: '0.5rem 0.9rem', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', textDecoration: 'none', whiteSpace: 'nowrap' }}>
               {c.action}
             </a>
           </div>
