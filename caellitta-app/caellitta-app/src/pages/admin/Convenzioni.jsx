@@ -3,7 +3,7 @@ import { sb } from '../../lib/supabase'
 import Modal from '../../components/Modal'
 
 const EMPTY_PARTNER = { partner: '', title: '', title_en: '', discount: '', description: '', description_en: '', category_id: '', commission_pct: 10, active: true }
-const EMPTY_ASSIGN  = { booking_id: '', template_ids: [] }
+const EMPTY_ASSIGN  = { booking_id: '', template_ids: [], amounts: {} }
 
 export default function Convenzioni() {
   const [templates, setTemplates] = useState([])
@@ -32,8 +32,11 @@ export default function Convenzioni() {
         .neq('status','cancelled').order('check_in', { ascending: false })
       if (e2) throw new Error('Bookings: ' + e2.message)
 
+      // amount_paid/commission/commission_settled: importo esperienza e commissione dovuta
+      // dal partner a noi — dati interni, mai esposti nel portale ospite (guest_coupons.notes
+      // e coupon_templates.commission_pct idem, restano solo qui nel gestionale)
       const { data: gc, error: e3 } = await sb.from('guest_coupons')
-        .select('id, booking_id, template_id, code, status, used_at, bookings(guest_name,code), coupon_templates(title,partner)')
+        .select('id, booking_id, template_id, code, status, used_at, amount_paid, commission, commission_settled, commission_settled_at, notes, bookings(guest_name,code), coupon_templates(title,partner,commission_pct)')
       if (e3) throw new Error('Coupons: ' + e3.message)
 
       const { data: cat, error: e4 } = await sb.from('coupon_categories').select('*').order('name')
@@ -108,11 +111,20 @@ export default function Convenzioni() {
         // Aggiunto l'indice i: senza, due template dello stesso partner assegnati
         // nella stessa chiamata potevano generare lo stesso Date.now() e collidere.
         const suffix = Date.now().toString(36).toUpperCase() + i.toString(36).toUpperCase()
+        // Importo esperienza inserito subito in fase di assegnazione (se compilato):
+        // la commissione dovuta dal partner si calcola da sola, niente da ricordarsi dopo.
+        const rawAmount = assign.amounts[tid]
+        const amount = rawAmount !== undefined && rawAmount !== '' ? Number(rawAmount) : null
+        const commission = (amount != null && t?.commission_pct != null)
+          ? Math.round(amount * t.commission_pct) / 100
+          : null
         return {
           booking_id:  assign.booking_id,
           template_id: tid,
           code: booking.code + '-' + (t?.partner||'CPR').substring(0,3).toUpperCase() + '-' + suffix,
           status: 'available',
+          amount_paid: amount,
+          commission,
         }
       })
       const { error } = await sb.from('guest_coupons').insert(inserts)
@@ -130,6 +142,28 @@ export default function Convenzioni() {
         ? prev.template_ids.filter(x => x !== id)
         : [...prev.template_ids, id]
     }))
+  }
+
+  function setAssignAmount(tid, value) {
+    setAssign(prev => ({ ...prev, amounts: { ...prev.amounts, [tid]: value } }))
+  }
+
+  // Aggiorna importo esperienza + ricalcola commissione (usabile anche su coupon già assegnati,
+  // per quando l'importo si scopre solo a consuntivo)
+  async function updateCouponAmount(gc, amountStr) {
+    const amount = amountStr === '' ? null : Number(amountStr)
+    const pct = gc.coupon_templates?.commission_pct
+    const commission = (amount != null && pct != null) ? Math.round(amount * pct) / 100 : null
+    await sb.from('guest_coupons').update({ amount_paid: amount, commission }).eq('id', gc.id)
+    load()
+  }
+
+  async function toggleCouponSettled(gc) {
+    await sb.from('guest_coupons').update({
+      commission_settled: !gc.commission_settled,
+      commission_settled_at: !gc.commission_settled ? new Date().toISOString() : null,
+    }).eq('id', gc.id)
+    load()
   }
 
   return (
@@ -177,6 +211,12 @@ export default function Convenzioni() {
                   </div>
                 )}
 
+                {t.commission_pct != null && (
+                  <div style={{ marginTop:'0.4rem', fontSize:'0.62rem', color:'var(--salt-faint)' }}>
+                    🔒 Commissione partner: {t.commission_pct}% (visibile solo qui)
+                  </div>
+                )}
+
                 {gCoupons.filter(gc => gc.template_id === t.id && gc.status === 'available').length > 0 && (
                   <div style={{ marginTop:'0.8rem', paddingTop:'0.8rem', borderTop:'1px solid var(--gold-dim)' }}>
                     <div style={{ fontSize:'0.55rem', letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--salt-faint)', marginBottom:'0.4rem' }}>Assegnato a</div>
@@ -201,24 +241,12 @@ export default function Convenzioni() {
         </div>
       )}
 
-      {/* COUPON ASSEGNATI */}
+      {/* COUPON ASSEGNATI — con importo esperienza e commissione dovuta dal partner (solo interno) */}
       {gCoupons.length > 0 && (
         <div style={{ marginTop:'2rem' }}>
           <div className="sec-hdr"><span className="sec-title">Coupon assegnati</span></div>
           {gCoupons.map(gc => (
-            <div key={gc.id} style={{ background:'var(--lava-card)', border:'1px solid var(--gold-dim)', padding:'0.75rem 1rem', marginBottom:'0.4rem' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'0.5rem', flexWrap:'wrap' }}>
-                <div>
-                  <div style={{ fontSize:'0.8rem', color:'var(--salt-dim)' }}>{gc.bookings?.guest_name}</div>
-                  <div style={{ fontFamily:'monospace', fontSize:'0.6rem', color:'rgba(201,171,114,.45)' }}>{gc.bookings?.code}</div>
-                </div>
-                <div style={{ fontSize:'0.75rem', color:'var(--salt-dim)' }}>{gc.coupon_templates?.title}</div>
-                <div style={{ fontFamily:'monospace', fontSize:'0.65rem', color:'var(--gold)' }}>{gc.code}</div>
-                <span className={`badge ${gc.status === 'used' ? 'badge-gray' : 'badge-green'}`}>
-                  {gc.status === 'used' ? 'Usato' : 'Attivo'}
-                </span>
-              </div>
-            </div>
+            <CouponRow key={gc.id} gc={gc} onSaveAmount={updateCouponAmount} onToggleSettled={toggleCouponSettled} />
           ))}
         </div>
       )}
@@ -258,7 +286,7 @@ export default function Convenzioni() {
           <textarea className="form-textarea" value={form.description_en} onChange={e=>setForm(p=>({...p,description_en:e.target.value}))} placeholder="Show your Caellitta guest status and get..." />
         </div>
         <div className="form-group">
-          <label className="form-label">Commissione partner (%)</label>
+          <label className="form-label">Commissione partner (%) — quanto ci deve il partner per esperienza, mai visibile all'ospite</label>
           <input className="form-input" type="number" step="0.5" value={form.commission_pct} onChange={e=>setForm(p=>({...p,commission_pct:e.target.value}))} placeholder="10" />
         </div>
         <div className="form-group">
@@ -286,14 +314,40 @@ export default function Convenzioni() {
         <div className="form-group">
           <label className="form-label">Coupon da assegnare</label>
           <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem', marginTop:'0.5rem' }}>
-            {templates.filter(t => t.active).map(t => (
-              <label key={t.id} style={{ display:'flex', alignItems:'center', gap:'0.8rem', cursor:'pointer', padding:'0.6rem 0.8rem', background: assign.template_ids.includes(t.id) ? 'rgba(201,171,114,.08)' : 'var(--lava-card)', border:`1px solid ${assign.template_ids.includes(t.id) ? 'var(--gold-dim2)' : 'var(--gold-dim)'}`, transition:'all .2s' }}>
-                <input type="checkbox" checked={assign.template_ids.includes(t.id)} onChange={() => toggleTemplate(t.id)} style={{ accentColor:'var(--gold)' }} />
-                <span style={{ flex:1, fontSize:'0.8rem', color:'var(--salt-dim)' }}>{t.partner} — {t.title}</span>
-                <span style={{ fontSize:'0.75rem', color:'var(--gold)', fontFamily:"'Cormorant Garamond',serif", textAlign:'right' }}>{t.discount}</span>
-              </label>
-            ))}
+            {templates.filter(t => t.active).map(t => {
+              const checked = assign.template_ids.includes(t.id)
+              const amountVal = assign.amounts[t.id] ?? ''
+              const previewCommission = (amountVal !== '' && t.commission_pct != null)
+                ? (Number(amountVal) * t.commission_pct / 100).toFixed(2)
+                : null
+              return (
+                <div key={t.id}>
+                  <label style={{ display:'flex', alignItems:'center', gap:'0.8rem', cursor:'pointer', padding:'0.6rem 0.8rem', background: checked ? 'rgba(201,171,114,.08)' : 'var(--lava-card)', border:`1px solid ${checked ? 'var(--gold-dim2)' : 'var(--gold-dim)'}`, transition:'all .2s' }}>
+                    <input type="checkbox" checked={checked} onChange={() => toggleTemplate(t.id)} style={{ accentColor:'var(--gold)' }} />
+                    <span style={{ flex:1, fontSize:'0.8rem', color:'var(--salt-dim)' }}>{t.partner} — {t.title}</span>
+                    <span style={{ fontSize:'0.75rem', color:'var(--gold)', fontFamily:"'Cormorant Garamond',serif", textAlign:'right' }}>{t.discount}</span>
+                  </label>
+                  {checked && t.commission_pct != null && (
+                    <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.5rem 0.8rem 0.2rem 2.4rem', flexWrap:'wrap' }}>
+                      <span style={{ fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--salt-faint)' }}>🔒 Importo esperienza (interno) €</span>
+                      <input
+                        className="form-input" type="number" style={{ width:90 }}
+                        value={amountVal}
+                        onChange={e => setAssignAmount(t.id, e.target.value)}
+                        placeholder="es. 100"
+                      />
+                      {previewCommission && (
+                        <span style={{ fontSize:'0.68rem', color:'var(--gold)' }}>→ commissione {t.commission_pct}% = €{previewCommission}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
+          <p style={{ fontSize:'0.62rem', color:'var(--salt-faint)', marginTop:'0.6rem', lineHeight:1.6 }}>
+            L'importo esperienza è facoltativo qui — se non lo conosci ancora, puoi compilarlo dopo dalla lista "Coupon assegnati" qui sotto. Non è mai visibile all'ospite.
+          </p>
         </div>
         <div style={{ display:'flex', gap:'0.8rem', marginTop:'1.8rem' }}>
           <button className="btn-primary" style={{ flex:1 }} onClick={assignCoupons} disabled={saving || !assign.booking_id || assign.template_ids.length === 0}>
@@ -302,6 +356,54 @@ export default function Convenzioni() {
           <button className="btn-cancel" onClick={() => setModalA(false)}>Annulla</button>
         </div>
       </Modal>
+    </div>
+  )
+}
+
+// Riga di un coupon assegnato: mostra sempre nome/codice/stato (visibile all'ospite),
+// e in una fascia separata contrassegnata "🔒 Solo noi" l'importo esperienza e la
+// commissione dovuta dal partner — editabile inline, con toggle "Segna incassata".
+function CouponRow({ gc, onSaveAmount, onToggleSettled }) {
+  const [editing, setEditing] = useState(false)
+  const [val, setVal] = useState(gc.amount_paid ?? '')
+  const pct = gc.coupon_templates?.commission_pct
+  const hasAmount = gc.amount_paid != null
+
+  return (
+    <div style={{ background:'var(--lava-card)', border:'1px solid var(--gold-dim)', padding:'0.75rem 1rem', marginBottom:'0.4rem' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'0.5rem', flexWrap:'wrap' }}>
+        <div>
+          <div style={{ fontSize:'0.8rem', color:'var(--salt-dim)' }}>{gc.bookings?.guest_name}</div>
+          <div style={{ fontFamily:'monospace', fontSize:'0.6rem', color:'rgba(201,171,114,.45)' }}>{gc.bookings?.code}</div>
+        </div>
+        <div style={{ fontSize:'0.75rem', color:'var(--salt-dim)' }}>{gc.coupon_templates?.title}</div>
+        <div style={{ fontFamily:'monospace', fontSize:'0.65rem', color:'var(--gold)' }}>{gc.code}</div>
+        <span className={`badge ${gc.status === 'used' ? 'badge-gray' : 'badge-green'}`}>
+          {gc.status === 'used' ? 'Usato' : 'Attivo'}
+        </span>
+      </div>
+
+      <div style={{ marginTop:'0.6rem', paddingTop:'0.6rem', borderTop:'1px dashed var(--gold-dim)', display:'flex', alignItems:'center', gap:'0.7rem', flexWrap:'wrap' }}>
+        <span style={{ fontSize:'0.55rem', letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--salt-faint)' }}>🔒 Solo noi</span>
+        {editing ? (
+          <>
+            <input className="form-input" style={{ width:90 }} type="number" value={val} onChange={e=>setVal(e.target.value)} placeholder="importo €" autoFocus />
+            <button className="btn-sm" onClick={() => { onSaveAmount(gc, val); setEditing(false) }}>Salva</button>
+            <button className="btn-sm" onClick={() => { setVal(gc.amount_paid ?? ''); setEditing(false) }}>Annulla</button>
+          </>
+        ) : hasAmount ? (
+          <>
+            <span style={{ fontSize:'0.72rem', color:'var(--salt-dim)' }}>Esperienza €{gc.amount_paid.toFixed(2)}</span>
+            <span style={{ fontSize:'0.72rem', color:'var(--gold)' }}>commissione {pct ?? '—'}% = €{(gc.commission||0).toFixed(2)}</span>
+            <button className="btn-sm" onClick={() => setEditing(true)}>✏</button>
+            <button className={`btn-sm ${gc.commission_settled ? '' : 'danger'}`} onClick={() => onToggleSettled(gc)}>
+              {gc.commission_settled ? '✓ Incassata' : 'Segna incassata'}
+            </button>
+          </>
+        ) : (
+          <button className="btn-sm" onClick={() => setEditing(true)}>+ importo esperienza</button>
+        )}
+      </div>
     </div>
   )
 }
