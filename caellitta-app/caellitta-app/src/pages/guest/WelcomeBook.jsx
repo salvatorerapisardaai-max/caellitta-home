@@ -228,10 +228,10 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang }) {
           <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', marginBottom: '0.4rem' }}>🕐 {it ? 'Orari' : 'Timings'}</div>
           <div style={{ fontSize: '0.78rem', color: 'var(--salt-dim)' }}>
             Check-in {it ? 'dalle' : 'from'} <strong style={{ color: 'var(--gold)' }}>15:00</strong> &nbsp;·&nbsp;
-            Check-out {it ? 'entro le' : 'by'} <strong style={{ color: 'var(--gold)' }}>10:30</strong>
+            Check-out {it ? 'entro le' : 'by'} <strong style={{ color: 'var(--gold)' }}>11:00</strong>
           </div>
           <div style={{ fontSize: '0.7rem', color: 'rgba(240,235,225,.28)', fontStyle: 'italic', marginTop: '0.3rem' }}>
-            Check-in from 3:00 PM · Check-out by 10:30 AM
+            Check-in from 3:00 PM · Check-out by 11:00 AM
           </div>
         </div>
       </div>
@@ -255,8 +255,8 @@ function ChCasa({ lang }) {
       icon: '🅿️',
       titleIt: 'Parcheggio',
       titleEn: 'Parking',
-      textIt: 'Parcheggio gratuito in parcheggio all\'aperto privato a circa 500 m. In alternativa, parcheggio a pagamento su strada secondo il tarifario orario lungo il lungomare su cui si trova la casa.',
-      textEn: 'Free parking in a private open-air car park approximately 500 m away. Alternatively, paid on-street parking at hourly rates along the seafront promenade where the house is located.',
+      textIt: 'Parcheggio a pagamento su strada secondo il tariffario orario lungo il lungomare su cui si trova la casa.',
+      textEn: 'Paid on-street parking at hourly rates along the seafront promenade where the house is located.',
     },
     {
       icon: '🏠',
