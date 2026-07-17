@@ -33,6 +33,7 @@ export default function Prenotazioni() {
   const [newBlockReason, setNewBlockReason] = useState('')
   const [blockError, setBlockError] = useState('')
   const [collaborators, setCollaborators] = useState([])
+  const [expandedBlockMonth, setExpandedBlockMonth] = useState(null)
 
   useEffect(() => { load(); loadBlocked(); loadCollaborators() }, [])
 
@@ -210,6 +211,15 @@ export default function Prenotazioni() {
     }
   }
 
+  // Raggruppa date bloccate per mese (YYYY-MM)
+  const blockedByMonth = {}
+  blockedDates.forEach(bd => {
+    const month = bd.date.slice(0, 7)
+    if (!blockedByMonth[month]) blockedByMonth[month] = []
+    blockedByMonth[month].push(bd)
+  })
+  const monthKeys = Object.keys(blockedByMonth).sort().reverse()
+
   const bySearch = bookings.filter(b => {
     if (!search.trim()) return true
     const q = search.trim().toLowerCase()
@@ -322,10 +332,11 @@ export default function Prenotazioni() {
         </div>
       ))}
 
-      {/* DATE BLOCCATE — chiusure manuali (manutenzione, uso personale) non legate a una prenotazione */}
+      {/* DATE BLOCCATE — raggruppate per mese con collapse/expand */}
       <div className="card" style={{ marginTop: '1.5rem' }}>
         <div className="sec-hdr">
           <span className="sec-title">Date bloccate</span>
+          <span style={{ fontSize: '0.65rem', color: 'var(--salt-faint)' }}>{blockedDates.length} date</span>
         </div>
         {blockError && (
           <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.6rem 0.9rem', marginBottom: '1rem', fontSize: '0.75rem', color: '#e08080' }}>
@@ -352,24 +363,63 @@ export default function Prenotazioni() {
           <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)' }}>Nessuna data bloccata</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-            {blockedDates.map(bd => (
-              <div key={bd.id} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '0.6rem 0.9rem',
-              }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--salt-dim)' }}>
-                  <strong style={{ color: 'var(--gold)', fontWeight: 400 }}>{fmtDate(bd.date)}</strong> — {bd.reason}
-                  {bd.source && bd.source !== 'manual' && (
-                    <span style={{ fontSize: '0.6rem', color: 'var(--salt-faint)' }}> · sincronizzato da {bd.source === 'airbnb' ? 'Airbnb' : 'Booking.com'}</span>
+            {monthKeys.map(month => {
+              const isExpanded = expandedBlockMonth === month
+              const dates = blockedByMonth[month]
+              const monthLabel = new Date(month + '-01').toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
+              
+              return (
+                <div key={month}>
+                  {/* Header mese con toggle */}
+                  <button
+                    onClick={() => setExpandedBlockMonth(isExpanded ? null : month)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      background: 'rgba(201,171,114,.06)',
+                      border: '1px solid rgba(201,171,114,.18)',
+                      padding: '0.7rem 0.9rem',
+                      cursor: 'pointer',
+                      fontSize: '0.78rem',
+                      fontWeight: 500,
+                      color: 'var(--gold)',
+                      marginBottom: '0.2rem',
+                    }}
+                  >
+                    <span>
+                      {isExpanded ? '▼' : '▶'} {monthLabel} · {dates.length} {dates.length === 1 ? 'data' : 'date'}
+                    </span>
+                  </button>
+
+                  {/* Lista date (mostra solo se expandito) */}
+                  {isExpanded && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '0.6rem' }}>
+                      {dates.map(bd => (
+                        <div key={bd.id} style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '0.5rem 0.8rem',
+                          marginLeft: '1.2rem',
+                        }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--salt-dim)' }}>
+                            <strong style={{ color: 'var(--gold)', fontWeight: 400 }}>{fmtDate(bd.date)}</strong> — {bd.reason}
+                            {bd.source && bd.source !== 'manual' && (
+                              <span style={{ fontSize: '0.6rem', color: 'var(--salt-faint)' }}> · sincronizzato da {bd.source === 'airbnb' ? 'Airbnb' : 'Booking.com'}</span>
+                            )}
+                          </span>
+                          {(!bd.source || bd.source === 'manual') ? (
+                            <button className="btn-sm danger" onClick={() => removeBlockedDate(bd.id)}>✕</button>
+                          ) : (
+                            <span style={{ fontSize: '0.6rem', color: 'var(--salt-faint)', fontStyle: 'italic' }}>gestito automaticamente</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </span>
-                {(!bd.source || bd.source === 'manual') ? (
-                  <button className="btn-sm danger" onClick={() => removeBlockedDate(bd.id)}>✕</button>
-                ) : (
-                  <span style={{ fontSize: '0.6rem', color: 'var(--salt-faint)', fontStyle: 'italic' }}>gestito automaticamente</span>
-                )}
-              </div>
-            ))}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
@@ -377,7 +427,7 @@ export default function Prenotazioni() {
       {/* MODAL */}
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Modifica' : 'Nuova prenotazione'}>
         {saveError && (
-          <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#e08080', lineHeight: 1.6 }}>
+          <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#e08080', lineHeight: 1.5 }}>
             {saveError}
           </div>
         )}
