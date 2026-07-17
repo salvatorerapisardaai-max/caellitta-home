@@ -35,6 +35,7 @@ const isCouponUsed = (c) => c?.status === 'used' || !!c?.used_at
 const CHAPTERS = [
   { id: 'welcome',    icon: '🏠', labelIt: 'Benvenuto',   labelEn: 'Welcome' },
   { id: 'casa',       icon: '🔑', labelIt: 'La casa',     labelEn: 'The house' },
+  { id: 'dintorni',   icon: '📍', labelIt: 'Dintorni',    labelEn: 'Nearby' },
   { id: 'regole',     icon: '📋', labelIt: 'Regole',      labelEn: 'Rules' },
   { id: 'esperienze', icon: '🌊', labelIt: 'Esperienze',  labelEn: 'Experiences' },
   { id: 'coupon',     icon: '🎁', labelIt: 'Coupon',      labelEn: 'Coupons' },
@@ -102,6 +103,7 @@ export default function WelcomeBook() {
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '0 0 2rem' }}>
         {chapter === 'welcome'    && <ChWelcome booking={booking} ci={ci} co={co} wifiShown={wifiShown} setWifiShown={setWifiShown} lang={lang} />}
         {chapter === 'casa'       && <ChCasa lang={lang} />}
+        {chapter === 'dintorni'   && <ChDintorni lang={lang} />}
         {chapter === 'regole'     && <ChRegole lang={lang} />}
         {chapter === 'esperienze' && <ChEsperienze lang={lang} />}
         {chapter === 'coupon'     && <ChCoupon coupons={coupons} useCoupon={useCoupon} lang={lang} />}
@@ -290,6 +292,65 @@ function ChCasa({ lang }) {
         </p>
         <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05 }}>
           {it ? <>La <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>tua casa</em></> : <>Your <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>home</em></>}
+        </h2>
+      </div>
+      <div style={{ padding: '0 1.5rem' }}>
+        <div style={{ width: 28, height: 1, background: 'var(--gold)', opacity: .55, margin: '1.5rem 0' }} />
+        {items.map(item => (
+          <div key={item.titleIt} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '1.1rem 1.3rem', marginBottom: '0.65rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{item.icon}</span>
+            <div>
+              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem', marginBottom: '0.3rem' }}>
+                {it ? item.titleIt : item.titleEn}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--salt-dim)', lineHeight: 1.7, fontWeight: 200 }}>
+                {it ? item.textIt : item.textEn}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── DINTORNI ──────────────────────────────────────────────
+
+function ChDintorni({ lang }) {
+  const it = lang === 'it'
+  const items = [
+    {
+      icon: '🛒',
+      titleIt: 'Supermercato',
+      titleEn: 'Supermarket',
+      textIt: 'A pochi passi da casa, in Via Re Martino 4, trovi un supermercato appena aperto per la spesa quotidiana.',
+      textEn: 'Just a short walk away, at Via Re Martino 4, you\'ll find a newly opened supermarket for your daily shopping.',
+    },
+    {
+      icon: '🌊',
+      titleIt: 'Il lungomare',
+      titleEn: 'The seafront promenade',
+      textIt: 'La casa si affaccia direttamente sul lungomare: scendi e sei tra locali, bar e american bar, perfetti per un aperitivo al tramonto o una passeggiata serale sul mare.',
+      textEn: 'The house looks directly onto the seafront promenade: step outside and you\'re among local venues, bars and cocktail spots, perfect for a sunset drink or an evening stroll by the sea.',
+    },
+    {
+      icon: '🏰',
+      titleIt: 'Il Castello Normanno',
+      titleEn: 'The Norman Castle',
+      textIt: 'A pochi minuti a piedi puoi visitare il Castello Normanno di Aci Castello, uno dei simboli della costa, con una vista sul mare che vale la salita.',
+      textEn: 'A short walk away you can visit the Norman Castle of Aci Castello, one of the landmarks of this coast, with a sea view well worth the climb.',
+    },
+  ]
+
+  return (
+    <div>
+      <div style={{ minHeight: '45vw', maxHeight: 240, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#0c2438 0%,#13100e 100%)' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
+        <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
+          {it ? 'A due passi da qui' : 'Just steps away'}
+        </p>
+        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05 }}>
+          {it ? <>Nei <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>dintorni</em></> : <>What's <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>nearby</em></>}
         </h2>
       </div>
       <div style={{ padding: '0 1.5rem' }}>
