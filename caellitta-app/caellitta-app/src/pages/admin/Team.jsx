@@ -25,6 +25,8 @@ export default function Team() {
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [deactivateModal, setDeactivateModal] = useState(false)
+  const [deactivatingId, setDeactivatingId] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -115,15 +117,17 @@ export default function Team() {
     }
   }
 
-  async function toggleActive(c) {
-    await sb.from('collaborators').update({ active: !c.active }).eq('id', c.id)
-    load()
-  }
-
-  async function regenerateCode(c) {
-    if (!confirm(`Generare un nuovo codice per ${c.name || c.email}? Il vecchio codice smetterà di funzionare.`)) return
-    await sb.from('collaborators').update({ access_code: randomAccessCode() }).eq('id', c.id)
-    load()
+  async function confirmDeactivate() {
+    if (!deactivatingId) return
+    try {
+      const { error } = await sb.from('collaborators').update({ active: false }).eq('id', deactivatingId)
+      if (error) throw error
+      await load()
+      setDeactivateModal(false)
+      setDeactivatingId(null)
+    } catch (err) {
+      console.error('Errore durante disattivazione:', err)
+    }
   }
 
   function copyCode(code) {
@@ -164,32 +168,63 @@ export default function Team() {
           Nessun collaboratore. Clicca "+ Nuovo collaboratore" per iniziare.
         </div>
       )}
-      {collaborators.map(c => (
-        <div key={c.id} style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem',
-          background: 'var(--lava-card)', border: `1px solid ${c.active ? 'var(--gold-dim)' : 'rgba(90,90,90,.2)'}`,
-          padding: '0.9rem 1.2rem', marginBottom: '0.5rem', opacity: c.active ? 1 : 0.55,
-        }}>
-          <div>
-            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem' }}>{c.name || '—'}</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--salt-faint)' }}>{c.email || 'nessuna email'}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.3rem' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--salt-faint)' }}>Codice di accesso:</span>
-              <code style={{ fontSize: '0.75rem', color: 'var(--gold)', background: 'var(--lava-hover)', padding: '0.15rem 0.5rem', letterSpacing: '0.1em' }}>{c.access_code}</code>
-              <button className="btn-sm" onClick={() => copyCode(c.access_code)}>Copia</button>
-              <button className="btn-sm" onClick={() => regenerateCode(c)}>Rigenera</button>
+      
+      {/* SEZIONE ATTIVI */}
+      {collaborators.filter(c => c.active).length > 0 && (
+        <div>
+          {collaborators.filter(c => c.active).map(c => (
+            <div key={c.id} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem',
+              background: 'var(--lava-card)', border: '1px solid var(--gold-dim)',
+              padding: '0.9rem 1.2rem', marginBottom: '0.5rem', opacity: 1,
+            }}>
+              <div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem' }}>{c.name || '—'}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--salt-faint)' }}>{c.email || 'nessuna email'}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.3rem' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--salt-faint)' }}>Codice di accesso:</span>
+                  <code style={{ fontSize: '0.75rem', color: 'var(--gold)', background: 'var(--lava-hover)', padding: '0.15rem 0.5rem', letterSpacing: '0.1em' }}>{c.access_code}</code>
+                  <button className="btn-sm" onClick={() => copyCode(c.access_code)}>Copia</button>
+                  <button className="btn-sm" onClick={() => regenerateCode(c)}>Rigenera</button>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                <span style={{ fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.2rem 0.55rem', border: '1px solid var(--gold-dim)', color: 'var(--gold)' }}>
+                  Commissione {c.default_commission_pct}%
+                </span>
+                <span className="badge badge-green">Attivo</span>
+                <button className="btn-sm" onClick={() => openEdit(c)}>✏</button>
+                <button className="btn-sm danger" onClick={() => { setDeactivatingId(c.id); setDeactivateModal(true) }}>Disattiva</button>
+              </div>
             </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-            <span style={{ fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.2rem 0.55rem', border: '1px solid var(--gold-dim)', color: 'var(--gold)' }}>
-              Commissione {c.default_commission_pct}%
-            </span>
-            <span className={`badge ${c.active ? 'badge-green' : 'badge-gray'}`}>{c.active ? 'Attivo' : 'Sospeso'}</span>
-            <button className="btn-sm" onClick={() => openEdit(c)}>✏</button>
-            <button className="btn-sm" onClick={() => toggleActive(c)}>{c.active ? 'Sospendi' : 'Riattiva'}</button>
-          </div>
+          ))}
         </div>
-      ))}
+      )}
+
+      {/* SEZIONE INATTIVI */}
+      {collaborators.filter(c => !c.active).length > 0 && (
+        <div style={{ marginTop: '1.5rem' }}>
+          <div className="sec-hdr"><span className="sec-title" style={{ color: 'rgba(240,235,225,.4)' }}>Collaboratori inattivi</span></div>
+          {collaborators.filter(c => !c.active).map(c => (
+            <div key={c.id} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem',
+              background: 'var(--lava-card)', border: '1px solid rgba(90,90,90,.2)',
+              padding: '0.9rem 1.2rem', marginBottom: '0.5rem', opacity: 0.55,
+            }}>
+              <div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem' }}>{c.name || '—'}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--salt-faint)' }}>{c.email || 'nessuna email'}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                <span style={{ fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.2rem 0.55rem', border: '1px solid rgba(90,90,90,.2)', color: 'rgba(90,90,90)' }}>
+                  Commissione {c.default_commission_pct}%
+                </span>
+                <span className="badge badge-gray">Inattivo</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* PRENOTAZIONI DEI COLLABORATORI */}
       <div className="sec-hdr" style={{ marginTop: '2rem' }}><span className="sec-title">Prenotazioni dei collaboratori</span></div>
@@ -226,8 +261,9 @@ export default function Team() {
         {syncMsg && <p style={{ fontSize: '0.75rem', color: 'var(--salt-faint)', marginBottom: '1rem' }}>{syncMsg}</p>}
 
         <p style={{ fontSize: '0.72rem', color: 'var(--salt-dim)', lineHeight: 1.7, marginBottom: '1rem' }}>
-          <strong>1. Importa</strong> — incolla qui sotto il link "esporta calendario" (.ics) che trovi nel pannello host di Airbnb e Booking.com: le loro date occupate verranno bloccate automaticamente anche qui (sincronizzazione ogni 3 ore, o subito con "Sincronizza ora").<br/>
-          <strong>2. Esporta</strong> — incolla invece questo link nella sezione "importa calendario" di Airbnb e Booking.com, così anche le prenotazioni fatte qui (o dai collaboratori) bloccano le date da loro:
+          <strong>1. Importa</strong> — incolla qui sotto il link "esporta calendario" (.ics) che trovi nel pannello host di Airbnb e Booking.com: le loro date occupate verranno bloccate automaticamente.
+          <br/>
+          <strong>2. Esporta</strong> — incolla invece questo link nella sezione "importa calendario" di Airbnb e Booking.com, così anche le prenotazioni fatte qui (o dai collaboratori) bloccano le loro piattaforme.
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
           <code style={{ fontSize: '0.68rem', color: 'var(--gold)', background: 'var(--lava-hover)', padding: '0.4rem 0.7rem', wordBreak: 'break-all' }}>{EXPORT_URL}</code>
@@ -253,7 +289,7 @@ export default function Team() {
         ))}
       </div>
 
-      {/* MODAL */}
+      {/* MODAL — Nuovo/Modifica collaboratore */}
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Modifica collaboratore' : 'Nuovo collaboratore'}>
         {saveError && (
           <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#e08080' }}>
@@ -288,6 +324,20 @@ export default function Team() {
           <button className="btn-cancel" onClick={() => setModal(false)}>Annulla</button>
         </div>
       </Modal>
+
+      {/* MODAL — Conferma disattivazione */}
+      <Modal open={deactivateModal} onClose={() => { setDeactivateModal(false); setDeactivatingId(null) }} title="Disattiva collaboratore">
+        <p style={{ fontSize: '0.85rem', color: 'var(--salt-dim)', lineHeight: 1.8, marginBottom: '1rem' }}>
+          Sei sicuro di voler disattivare questo collaboratore?
+        </p>
+        <p style={{ fontSize: '0.78rem', color: 'rgba(240,235,225,.55)', lineHeight: 1.7, marginBottom: '1.5rem', fontStyle: 'italic' }}>
+          Le prenotazioni storiche resteranno collegate al collaboratore, ma non apparirà più nei dropdown di assegnazione per nuove prenotazioni.
+        </p>
+        <div style={{ display: 'flex', gap: '0.8rem' }}>
+          <button className="btn-primary" style={{ flex: 1, background: '#a85555' }} onClick={confirmDeactivate}>Disattiva</button>
+          <button className="btn-cancel" onClick={() => { setDeactivateModal(false); setDeactivatingId(null) }}>Annulla</button>
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -295,4 +345,11 @@ export default function Team() {
 function fmtDate(d) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
+}
+
+async function regenerateCode(c) {
+  if (!confirm(`Generare un nuovo codice per ${c.name || c.email}? Il vecchio codice smetterà di funzionare.`)) return
+  await sb.from('collaborators').update({ access_code: randomAccessCode() }).eq('id', c.id)
+  // Reload manuale qui non è elegante, ma nel contesto di Team.jsx è accettabile per ora
+  window.location.reload()
 }
