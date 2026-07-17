@@ -6,6 +6,7 @@ export default function Dashboard() {
   const [bookings, setBookings] = useState([])
   const [expenses, setExpenses] = useState([])
   const [blockedDates, setBlockedDates] = useState([])
+  const [guestCoupons, setGuestCoupons] = useState([])
   const [calMonth, setCalMonth] = useState(getRomeDate())
 
   const navigate = useNavigate()
@@ -31,9 +32,17 @@ export default function Dashboard() {
       .select('*')
       .order('date')
 
+    // Commissioni dovute DAL PARTNER A NOI per le esperienze Convenzioni — contabilità
+    // separata e opposta rispetto a quella dei collaboratori (bookings.commission_due,
+    // che invece è quanto dobbiamo NOI a loro)
+    const { data: gc } = await sb
+      .from('guest_coupons')
+      .select('commission, commission_settled')
+
     setBookings(bk || [])
     setExpenses(ex || [])
     setBlockedDates(bd || [])
+    setGuestCoupons(gc || [])
   }
 
   const today = getRomeDate()
@@ -77,9 +86,16 @@ export default function Dashboard() {
   }, 0)
   const occupancyRate = daysInThisMonth > 0 ? Math.round((occupiedNights / daysInThisMonth) * 100) : 0
 
-  const commissionDue = bookings
+  // DA VERSARE — quanto dobbiamo NOI ai collaboratori per le prenotazioni che ci hanno portato
+  const commissionToPay = bookings
     .filter(b => b.collaborator_id && !b.commission_settled)
     .reduce((s, b) => s + (b.commission_due || 0), 0)
+
+  // DA INCASSARE — quanto ci deve il partner (es. Ivana Luxury Experiences) per le esperienze
+  // Convenzioni fatte dai nostri ospiti. Contabilità separata, mai sommata alla precedente.
+  const commissionToCollect = guestCoupons
+    .filter(gc => !gc.commission_settled && gc.commission)
+    .reduce((s, gc) => s + (gc.commission || 0), 0)
 
   // ───────────── CALENDAR ─────────────
   const year = calMonth.getFullYear()
@@ -217,10 +233,18 @@ export default function Dashboard() {
         />
 
         <KPI
+          label="Commissioni da versare"
+          value={`€${commissionToPay.toLocaleString('it')}`}
+          sub="ai collaboratori"
+          color={commissionToPay > 0 ? 'red' : 'green'}
+          accent="gold"
+        />
+
+        <KPI
           label="Commissioni da incassare"
-          value={`€${commissionDue.toLocaleString('it')}`}
-          sub="da collaboratori"
-          color={commissionDue > 0 ? 'red' : 'green'}
+          value={`€${commissionToCollect.toLocaleString('it')}`}
+          sub="da esperienze (Convenzioni)"
+          color={commissionToCollect > 0 ? 'gold' : 'green'}
           accent="gold"
         />
       </div>
