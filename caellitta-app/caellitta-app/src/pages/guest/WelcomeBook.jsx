@@ -11,7 +11,7 @@ const HERO_URL = 'https://ejjatrfeeatgiqpomibd.supabase.co/storage/v1/object/pub
 // Numero WhatsApp principale di Caellitta Home (solo cifre, per i link wa.me)
 const CAELLITTA_WA = '393520124403'
 
-// WiFi credentials
+// WiFi reale della struttura
 const WIFI_SSID = 'VodafoneCaellita Home'
 const WIFI_PASSWORD = 'rJT9HdAP2F4Asp96'
 
@@ -173,8 +173,8 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang }) {
 
         <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', fontWeight: 300, lineHeight: 1.85, color: 'rgba(240,235,225,.75)', marginBottom: '1rem' }}>
           {it
-            ? 'Siamo felici di accoglierti personalmente e consegnarti le chiavi. Caellitta Home è nata per essere vissuta — non solo abitata. Il mare sotto, il castello di lava alle spalle, i profumi della Sicilia ovunque.'
-            : 'We will be happy to welcome you personally and hand you the keys. Caellitta Home was built to be lived — not just occupied. The sea below, the lava castle behind you, the scent of Sicily everywhere.'}
+            ? 'Siamo felici di accoglierti personalmente e consegnarti le chiavi. Caellitta Home è nata per essere vissuta — non solo abitata. Il mare sotto, il castello di lava alle spalle, il profumo di zagara nell\'aria. Questo spazio è tuo.'
+            : 'We will be happy to welcome you personally and hand you the keys. Caellitta Home was built to be lived — not just occupied. The sea below, the lava castle behind you, the scent of orange blossom in the air. This space is yours.'}
         </p>
 
         <div style={{ width: 28, height: 1, background: 'var(--gold)', opacity: .55, margin: '1.5rem 0' }} />
@@ -195,13 +195,13 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang }) {
 
         {/* WiFi */}
         <div style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '1.2rem 1.3rem', marginBottom: '0.75rem' }}>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', marginBottom: '0.8rem' }}>🌐 {it ? 'WiFi' : 'WiFi Network'}</div>
+          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', marginBottom: '0.8rem' }}>🌐 WiFi</div>
           <div style={{ background: 'rgba(201,171,114,.06)', border: '1px solid rgba(201,171,114,.18)', padding: '0.8rem 1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid var(--gold-dim)' }}>
               <span style={{ fontSize: '0.6rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(240,235,225,.28)' }}>{it ? 'Rete' : 'Network'}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--gold)' }}>{WIFI_SSID}</span>
-                <button onClick={() => copyText(WIFI_SSID, setNetCopied)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: netCopied ? '#7dcca0' : 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.2rem 0.4rem', cursor: 'pointer' }}>
+                <button onClick={() => copyText(WIFI_SSID, setNetCopied)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: netCopied ? '#7dcca0' : 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
                   {netCopied ? (it ? 'Copiato' : 'Copied') : (it ? 'Copia' : 'Copy')}
                 </button>
               </div>
@@ -210,9 +210,14 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang }) {
               <span style={{ fontSize: '0.6rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(240,235,225,.28)' }}>Password</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--gold)' }}>{wifiShown ? WIFI_PASSWORD : '••••••••••••'}</span>
-                <button onClick={() => setWifiShown(!wifiShown)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.2rem 0.4rem', cursor: 'pointer' }}>
+                <button onClick={() => setWifiShown(!wifiShown)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
                   {wifiShown ? (it ? 'Nascondi' : 'Hide') : (it ? 'Mostra' : 'Show')}
                 </button>
+                {wifiShown && (
+                  <button onClick={() => copyText(WIFI_PASSWORD, setPwdCopied)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: pwdCopied ? '#7dcca0' : 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
+                    {pwdCopied ? (it ? 'Copiato' : 'Copied') : (it ? 'Copia' : 'Copy')}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -278,7 +283,7 @@ function ChCasa({ lang }) {
 
   return (
     <div>
-      <div style={{ minHeight: '55vw', maxHeight: 280, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg, rgba(80,50,30,.3), rgba(120,90,60,.15))' }}>
+      <div style={{ minHeight: '55vw', maxHeight: 280, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#1a3040 0%,#13100e 100%)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
           {it ? 'Info pratiche' : 'Practical info'}
@@ -315,14 +320,14 @@ function ChRegole({ lang }) {
     { icon: '🔇', titleIt: 'Silenzio notturno', titleEn: 'Quiet hours', textIt: 'Rispetto del silenzio dalla sera. I vicini ringraziano.', textEn: 'Please respect quiet hours in the evening. Your neighbours will thank you.' },
     { icon: '🚭', titleIt: 'No fumo in casa', titleEn: 'No smoking indoors', textIt: 'Ti chiediamo di non fumare all\'interno dell\'appartamento.', textEn: 'Please do not smoke inside the apartment.' },
     { icon: '🐾', titleIt: 'Animali', titleEn: 'Pets', textIt: 'Benvenuti solo se concordato anticipatamente.', textEn: 'Welcome only if agreed in advance.' },
-    { icon: '🗑', titleIt: 'Raccolta differenziata', titleEn: 'Recycling', textIt: 'Umido, plastica, carta, vetro. Calendario raccolta in bacheca.', textEn: 'Organic, plastic, paper, glass. Collection calendar on notice board.' },
-    { icon: '🏡', titleIt: 'Cura degli spazi', titleEn: 'Care of the space', textIt: 'Ti chiediamo di lasciare la casa nelle stesse condizioni in cui l\'hai trovata.', textEn: 'Please leave the house in the same condition you found it.' },
+    { icon: '🗑', titleIt: 'Raccolta differenziata', titleEn: 'Recycling', textIt: 'Umido, plastica, carta, vetro. Calendario raccolta in bacheca.', textEn: 'Organic, plastic, paper, glass. Collection calendar on the noticeboard.' },
+    { icon: '🏡', titleIt: 'Cura degli spazi', titleEn: 'Care of the space', textIt: 'Ti chiediamo di lasciare la casa nelle stesse condizioni in cui l\'hai trovata.', textEn: 'Please leave the house in the same condition as you found it.' },
     { icon: '💧', titleIt: 'Acqua', titleEn: 'Water', textIt: 'Evita sprechi. L\'acqua è un bene prezioso in Sicilia.', textEn: 'Avoid waste. Water is precious in Sicily.' },
   ]
 
   return (
     <div>
-      <div style={{ minHeight: '45vw', maxHeight: 240, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg, rgba(80,50,30,.3), rgba(120,90,60,.15))' }}>
+      <div style={{ minHeight: '45vw', maxHeight: 240, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#1a1a2e 0%,#13100e 100%)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
           {it ? 'Vivere bene insieme' : 'Living well together'}
@@ -335,7 +340,7 @@ function ChRegole({ lang }) {
         <div style={{ width: 28, height: 1, background: 'var(--gold)', opacity: .55, margin: '1.5rem 0' }} />
         <ul style={{ listStyle: 'none' }}>
           {rules.map(r => (
-            <li key={r.titleIt} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', padding: '0.8rem 0', borderBottom: '1px solid var(--gold-dim)', fontSize: '0.8rem', fontWeight: 200 }}>
+            <li key={r.titleIt} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', padding: '0.8rem 0', borderBottom: '1px solid var(--gold-dim)', fontSize: '0.8rem', fontWeight: 200, color: 'var(--salt-dim)', lineHeight: 1.65 }}>
               <span style={{ fontSize: '0.9rem', flexShrink: 0, marginTop: '0.05rem' }}>{r.icon}</span>
               <div>
                 <strong style={{ color: 'var(--salt)', fontWeight: 400 }}>{it ? r.titleIt : r.titleEn}</strong>
@@ -392,7 +397,7 @@ function ChEsperienze({ lang }) {
 
   return (
     <div>
-      <div style={{ minHeight: '45vw', maxHeight: 240, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg, rgba(80,50,30,.3), rgba(120,90,60,.15))' }}>
+      <div style={{ minHeight: '45vw', maxHeight: 240, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#0c2e1e 0%,#13100e 100%)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
           {it ? 'Avventure siciliane' : 'Sicilian adventures'}
@@ -434,7 +439,7 @@ function ChEsperienze({ lang }) {
                     {desc && (
                       <div style={{ fontSize: '0.76rem', color: 'var(--salt-dim)', lineHeight: 1.72, fontWeight: 200 }}>{desc}</div>
                     )}
-                    <a href={waLink(title)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: '0.85rem', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gold)', textDecoration: 'none' }}>
+                    <a href={waLink(title)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: '0.85rem', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--lava)', background: 'var(--gold)', textDecoration: 'none', padding: '0.4rem 0.9rem' }}>
                       {it ? 'Prenota via WhatsApp →' : 'Book via WhatsApp →'}
                     </a>
                   </div>
@@ -455,7 +460,7 @@ function ChCoupon({ coupons, useCoupon, lang }) {
 
   return (
     <div>
-      <div style={{ minHeight: '45vw', maxHeight: 240, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg, rgba(80,50,30,.3), rgba(120,90,60,.15))' }}>
+      <div style={{ minHeight: '45vw', maxHeight: 240, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#2e1a0c 0%,#13100e 100%)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
           {it ? 'Esclusivo per te' : 'Exclusive for you'}
@@ -490,21 +495,19 @@ function ChCoupon({ coupons, useCoupon, lang }) {
               const desc  = it ? t?.description : (t?.description_en || t?.description)
               const value = t?.discount
               return (
-                <div key={c.id} style={{ background: used ? 'rgba(240,235,225,.03)' : 'var(--lava-card)', border: `1px solid ${used ? 'rgba(201,171,114,.08)' : 'var(--gold-dim)'}`, padding: '1.3rem', marginBottom: '0.75rem', position: 'relative' }}>
+                <div key={c.id} style={{ background: used ? 'rgba(240,235,225,.03)' : 'var(--lava-card)', border: `1px solid ${used ? 'rgba(201,171,114,.08)' : 'var(--gold-dim)'}`, padding: '1.3rem', marginBottom: '0.75rem', overflow: 'hidden', position: 'relative', opacity: used ? 0.5 : 1 }}>
                   {!used && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,var(--gold),transparent)' }} />}
                   <div style={{ fontSize: '0.55rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.35rem' }}>{icon} {catName}</div>
                   <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.2rem', marginBottom: '0.3rem' }}>{title}</div>
                   {desc && <div style={{ fontSize: '0.76rem', color: 'var(--salt-dim)', lineHeight: 1.72, fontWeight: 200, marginBottom: '0.8rem' }}>{desc}</div>}
                   {value && <div style={{ fontSize: '0.72rem', color: used ? 'rgba(201,171,114,.3)' : 'rgba(201,171,114,.85)', marginBottom: '0.8rem', lineHeight: 1.5 }}>{value}</div>}
-                  <div style={{ fontFamily: 'monospace', fontSize: '0.72rem', background: 'rgba(201,171,114,.08)', color: 'var(--gold)', padding: '0.35rem 0.75rem', display: 'inline-block', marginBottom: '0.75rem' }}>
-                    {t?.partner || 'Coupon'}
-                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: '0.72rem', background: 'rgba(201,171,114,.08)', color: 'var(--gold)', padding: '0.35rem 0.75rem', display: 'inline-block', marginBottom: '0.8rem', letterSpacing: '0.08em' }}>{c.code}</div>
                   {used ? (
                     <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)', padding: '0.4rem 0' }}>
                       ✓ {it ? 'Utilizzato' : 'Used'}{c.used_at ? ` ${it ? 'il' : 'on'} ${new Date(c.used_at).toLocaleDateString(it ? 'it-IT' : 'en-GB')}` : ''}
                     </div>
                   ) : (
-                    <button onClick={() => { if (confirm(it ? 'Segnare questo coupon come utilizzato?' : 'Mark this coupon as used?')) useCoupon(c.id) }} style={{ width: '100%', padding: '0.55rem 0', border: 'none', background: 'transparent', color: 'rgba(240,235,225,.7)', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer' }}
+                    <button onClick={() => { if (confirm(it ? 'Segnare questo coupon come utilizzato?' : 'Mark this coupon as used?')) useCoupon(c.id) }} style={{ width: '100%', padding: '0.55rem', border: '1px solid rgba(201,171,114,.3)', background: 'transparent', color: 'rgba(240,235,225,.7)', fontFamily: 'Jost,sans-serif', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all .2s' }}
                       onMouseEnter={e => { e.target.style.background = 'rgba(201,171,114,.08)'; e.target.style.color = 'var(--gold)' }}
                       onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = 'rgba(240,235,225,.7)' }}
                     >
@@ -568,7 +571,7 @@ function ChContatti({ lang }) {
 
   return (
     <div>
-      <div style={{ minHeight: '40vw', maxHeight: 220, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg, rgba(80,50,30,.3), rgba(120,90,60,.15))' }}>
+      <div style={{ minHeight: '40vw', maxHeight: 220, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#1e1a10 0%,#13100e 100%)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
           {it ? 'Siamo qui per te' : 'We are here for you'}
@@ -582,7 +585,7 @@ function ChContatti({ lang }) {
         <div style={{ width: 28, height: 1, background: 'var(--gold)', opacity: .55, margin: '1.5rem 0' }} />
 
         {contacts.map(c => (
-          <div key={c.nameIt} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '1.2rem 1.3rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div key={c.nameIt} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '1.2rem 1.3rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
             <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(201,171,114,.09)', border: '1px solid rgba(201,171,114,.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
               {c.avatar}
             </div>
@@ -591,7 +594,7 @@ function ChContatti({ lang }) {
               <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)', marginTop: '0.1rem' }}>{it ? c.roleIt : c.roleEn}</div>
               <div style={{ fontSize: '0.78rem', color: 'var(--gold)', marginTop: '0.3rem', fontFamily: 'monospace' }}>{c.num}</div>
             </div>
-            <a href={c.link} target="_blank" rel="noopener noreferrer" style={{ background: 'rgba(201,171,114,.08)', border: '1px solid rgba(201,171,114,.25)', color: 'var(--gold)', padding: '0.5rem 0.8rem', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none', borderRadius: '2px', cursor: 'pointer' }}>
+            <a href={c.link} target="_blank" rel="noopener noreferrer" style={{ background: 'rgba(201,171,114,.08)', border: '1px solid rgba(201,171,114,.25)', color: 'var(--gold)', padding: '0.5rem 0.9rem', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', textDecoration: 'none', whiteSpace: 'nowrap' }}>
               {c.action}
             </a>
           </div>
