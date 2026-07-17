@@ -17,6 +17,36 @@ const EMPTY = {
   birth_date: '', birth_place: '', gender: '', document_type: '', document_number: '', nationality: ''
 }
 
+// Raggruppa righe di blocked_dates in intervalli continui (stesso motivo/fonte,
+// date consecutive), così un blocco lungo non diventa una riga per ogni singolo giorno.
+function groupConsecutiveBlocks(rows) {
+  const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date))
+  const groups = []
+  for (const r of sorted) {
+    const last = groups[groups.length - 1]
+    const expectedNext = last ? addDays(last.end, 1) : null
+    if (last && r.date === expectedNext && r.reason === last.reason && r.source === last.source) {
+      last.end = r.date
+      last.ids.push(r.id)
+    } else {
+      groups.push({ start: r.date, end: r.date, reason: r.reason, source: r.source, ids: [r.id] })
+    }
+  }
+  return groups
+}
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() + n)
+  return toISODate(d)
+}
+
+// Un gruppo "tocca" un mese se una qualsiasi delle sue notti cade in quel mese (YYYY-MM)
+function groupTouchesMonth(group, month) {
+  if (!month) return true
+  return group.start.slice(0, 7) <= month && group.end.slice(0, 7) >= month
+}
+
 export default function Prenotazioni() {
   const [bookings, setBookings] = useState([])
   const [modal, setModal] = useState(false)
@@ -28,12 +58,12 @@ export default function Prenotazioni() {
   const [filterStatus, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [blockedDates, setBlockedDates] = useState([])
+  const [blockedMonth, setBlockedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [newBlockStart, setNewBlockStart] = useState('')
   const [newBlockEnd, setNewBlockEnd] = useState('')
   const [newBlockReason, setNewBlockReason] = useState('')
   const [blockError, setBlockError] = useState('')
   const [collaborators, setCollaborators] = useState([])
-  const [expandedBlockMonth, setExpandedBlockMonth] = useState(null)
 
   useEffect(() => { load(); loadBlocked(); loadCollaborators() }, [])
 
@@ -73,6 +103,12 @@ export default function Prenotazioni() {
 
   async function removeBlockedDate(id) {
     await sb.from('blocked_dates').delete().eq('id', id)
+    loadBlocked()
+  }
+
+  async function removeBlockedGroup(ids) {
+    if (ids.length > 1 && !confirm(`Sbloccare tutte le ${ids.length} notti di questo intervallo?`)) return
+    await sb.from('blocked_dates').delete().in('id', ids)
     loadBlocked()
   }
 
@@ -211,15 +247,6 @@ export default function Prenotazioni() {
     }
   }
 
-  // Raggruppa date bloccate per mese (YYYY-MM)
-  const blockedByMonth = {}
-  blockedDates.forEach(bd => {
-    const month = bd.date.slice(0, 7)
-    if (!blockedByMonth[month]) blockedByMonth[month] = []
-    blockedByMonth[month].push(bd)
-  })
-  const monthKeys = Object.keys(blockedByMonth).sort().reverse()
-
   const bySearch = bookings.filter(b => {
     if (!search.trim()) return true
     const q = search.trim().toLowerCase()
@@ -228,6 +255,12 @@ export default function Prenotazioni() {
   const filtered = filterStatus === 'all' ? bySearch : bySearch.filter(b => b.status === filterStatus)
   const collabById = Object.fromEntries(collaborators.map(c => [c.id, c]))
   const f = form
+
+  const blockedGroups = groupConsecutiveBlocks(blockedDates)
+  const visibleBlockedGroups = blockedGroups.filter(g => groupTouchesMonth(g, blockedMonth))
+  const monthLabel = blockedMonth
+    ? new Date(blockedMonth + '-01T00:00:00').toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
+    : null
 
   return (
     <div>
@@ -294,7 +327,14 @@ export default function Prenotazioni() {
           {/* Riga top: nome + bottoni */}
           <div className="pren-card-top">
             <div>
-              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem' }}>{b.guest_name}</div>
+              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem' }}>
+                {b.guest_name}
+                {b.notes && b.notes.includes('Importata automaticamente da iCal') && (
+                  <span style={{ marginLeft: '0.6rem', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#e0a862', border: '1px solid rgba(224,168,98,.4)', padding: '0.15rem 0.45rem', verticalAlign: 'middle' }}>
+                    dati da completare
+                  </span>
+                )}
+              </div>
               <div style={{ fontSize: '0.6rem', fontFamily: 'monospace', color: 'rgba(201,171,114,.45)' }}>{b.code}</div>
             </div>
             <div className="pren-actions">
@@ -332,11 +372,21 @@ export default function Prenotazioni() {
         </div>
       ))}
 
-      {/* DATE BLOCCATE — raggruppate per mese con collapse/expand */}
+      {/* DATE BLOCCATE — chiusure manuali + blocchi tecnici OTA, raggruppate per intervallo continuo */}
       <div className="card" style={{ marginTop: '1.5rem' }}>
-        <div className="sec-hdr">
+        <div className="sec-hdr" style={{ flexWrap: 'wrap', gap: '0.6rem' }}>
           <span className="sec-title">Date bloccate</span>
-          <span style={{ fontSize: '0.65rem', color: 'var(--salt-faint)' }}>{blockedDates.length} date</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <input
+              className="form-input" type="month"
+              style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }}
+              value={blockedMonth}
+              onChange={e => setBlockedMonth(e.target.value)}
+            />
+            {blockedMonth && (
+              <button className="btn-sm" onClick={() => setBlockedMonth('')}>Vedi tutti i mesi</button>
+            )}
+          </div>
         </div>
         {blockError && (
           <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.6rem 0.9rem', marginBottom: '1rem', fontSize: '0.75rem', color: '#e08080' }}>
@@ -359,63 +409,35 @@ export default function Prenotazioni() {
           <button className="btn-primary" onClick={addBlockedDate} disabled={!newBlockStart}>+ Blocca</button>
         </div>
 
-        {blockedDates.length === 0 ? (
+        {blockedGroups.length === 0 ? (
           <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)' }}>Nessuna data bloccata</p>
+        ) : visibleBlockedGroups.length === 0 ? (
+          <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)' }}>
+            Nessun blocco in {monthLabel}. {blockedGroups.length} intervalli bloccati in totale — cambia mese o clicca "Vedi tutti i mesi".
+          </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-            {monthKeys.map(month => {
-              const isExpanded = expandedBlockMonth === month
-              const dates = blockedByMonth[month]
-              const monthLabel = new Date(month + '-01').toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
-              
+            {visibleBlockedGroups.map((g, i) => {
+              const nights = Math.round((new Date(g.end) - new Date(g.start)) / 86400000) + 1
+              const isManual = !g.source || g.source === 'manual'
               return (
-                <div key={month}>
-                  {/* Header mese con toggle */}
-                  <button
-                    onClick={() => setExpandedBlockMonth(isExpanded ? null : month)}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      background: 'rgba(201,171,114,.06)',
-                      border: '1px solid rgba(201,171,114,.18)',
-                      padding: '0.7rem 0.9rem',
-                      cursor: 'pointer',
-                      fontSize: '0.78rem',
-                      fontWeight: 500,
-                      color: 'var(--gold)',
-                      marginBottom: '0.2rem',
-                    }}
-                  >
-                    <span>
-                      {isExpanded ? '▼' : '▶'} {monthLabel} · {dates.length} {dates.length === 1 ? 'data' : 'date'}
-                    </span>
-                  </button>
-
-                  {/* Lista date (mostra solo se expandito) */}
-                  {isExpanded && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '0.6rem' }}>
-                      {dates.map(bd => (
-                        <div key={bd.id} style={{
-                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                          background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '0.5rem 0.8rem',
-                          marginLeft: '1.2rem',
-                        }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--salt-dim)' }}>
-                            <strong style={{ color: 'var(--gold)', fontWeight: 400 }}>{fmtDate(bd.date)}</strong> — {bd.reason}
-                            {bd.source && bd.source !== 'manual' && (
-                              <span style={{ fontSize: '0.6rem', color: 'var(--salt-faint)' }}> · sincronizzato da {bd.source === 'airbnb' ? 'Airbnb' : 'Booking.com'}</span>
-                            )}
-                          </span>
-                          {(!bd.source || bd.source === 'manual') ? (
-                            <button className="btn-sm danger" onClick={() => removeBlockedDate(bd.id)}>✕</button>
-                          ) : (
-                            <span style={{ fontSize: '0.6rem', color: 'var(--salt-faint)', fontStyle: 'italic' }}>gestito automaticamente</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                <div key={i} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '0.6rem 0.9rem',
+                }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--salt-dim)' }}>
+                    <strong style={{ color: 'var(--gold)', fontWeight: 400 }}>
+                      {fmtDate(g.start)}{g.end !== g.start ? ` → ${fmtDate(g.end)}` : ''}
+                    </strong>
+                    {' '}({nights} {nights === 1 ? 'notte' : 'notti'}) — {g.reason}
+                    {!isManual && (
+                      <span style={{ fontSize: '0.6rem', color: 'var(--salt-faint)' }}> · sincronizzato da {g.source === 'airbnb' ? 'Airbnb' : 'Booking.com'}</span>
+                    )}
+                  </span>
+                  {isManual ? (
+                    <button className="btn-sm danger" onClick={() => removeBlockedGroup(g.ids)}>✕</button>
+                  ) : (
+                    <span style={{ fontSize: '0.6rem', color: 'var(--salt-faint)', fontStyle: 'italic' }}>gestito automaticamente</span>
                   )}
                 </div>
               )
@@ -427,7 +449,7 @@ export default function Prenotazioni() {
       {/* MODAL */}
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Modifica' : 'Nuova prenotazione'}>
         {saveError && (
-          <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#e08080', lineHeight: 1.5 }}>
+          <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#e08080', lineHeight: 1.6 }}>
             {saveError}
           </div>
         )}
