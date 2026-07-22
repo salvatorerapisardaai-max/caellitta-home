@@ -2,6 +2,7 @@ import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import AuthGuard from './components/AuthGuard'
 import CollaboratorGuard from './components/CollaboratorGuard'
+import { PropertyProvider } from './lib/PropertyContext'
 import Login from './pages/admin/Login'
 import AdminLayout from './components/AdminLayout'
 import Dashboard from './pages/admin/Dashboard'
@@ -28,7 +29,9 @@ export default function App() {
       {/* ADMIN — protetta da AuthGuard */}
       <Route path="/" element={
         <AuthGuard>
-          <AdminLayout />
+          <PropertyProvider>
+            <AdminLayout />
+          </PropertyProvider>
         </AuthGuard>
       }>
         <Route index element={<Dashboard />} />
