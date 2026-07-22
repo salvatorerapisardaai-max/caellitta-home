@@ -1,30 +1,30 @@
 import React, { useEffect, useState } from 'react'
 import { sb } from '../../lib/supabase'
+import { useActiveProperty } from '../../lib/PropertyContext'
 
 const HERO_BUCKET = 'site-media'
-const HERO_PATH = 'benvenuto.jpg'
-const HERO_PUBLIC_URL_BASE = `https://ejjatrfeeatgiqpomibd.supabase.co/storage/v1/object/public/${HERO_BUCKET}/${HERO_PATH}`
+const heroPath = (propertyId) => `${propertyId}/benvenuto.jpg`
+const heroPublicUrl = (propertyId) =>
+  `https://ejjatrfeeatgiqpomibd.supabase.co/storage/v1/object/public/${HERO_BUCKET}/${heroPath(propertyId)}`
 
 const EMPTY_ITEM = { icon: '✨', title_it: '', title_en: '', text_it: '', text_en: '' }
 
 export default function PortaleOspiti() {
-  const [propertyId, setPropertyId] = useState(null)
+  const { activePropertyId } = useActiveProperty()
   const [content, setContent] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
   const [uploading, setUploading] = useState(false)
-  const [heroPreview, setHeroPreview] = useState(HERO_PUBLIC_URL_BASE)
+  const [heroPreview, setHeroPreview] = useState(null)
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    if (activePropertyId) { load(); setHeroPreview(heroPublicUrl(activePropertyId)) }
+  }, [activePropertyId])
 
   async function load() {
     setLoading(true)
-    const { data: prop } = await sb.from('properties').select('id').order('created_at').limit(1).single()
-    if (!prop) { setLoading(false); return }
-    setPropertyId(prop.id)
-
-    const { data: c } = await sb.from('guest_portal_content').select('*').eq('property_id', prop.id).single()
+    const { data: c } = await sb.from('guest_portal_content').select('*').eq('property_id', activePropertyId).maybeSingle()
     setContent(c || {
       welcome_text_it: '', welcome_text_en: '', wifi_ssid: '', wifi_password: '',
       hero_image_url: null, casa_items: [], dintorni_items: [], regole_items: [],
@@ -37,7 +37,7 @@ export default function PortaleOspiti() {
     setSaving(true)
     setSavedMsg('')
     const { error } = await sb.from('guest_portal_content').upsert({
-      property_id: propertyId,
+      property_id: activePropertyId,
       welcome_text_it: content.welcome_text_it,
       welcome_text_en: content.welcome_text_en,
       wifi_ssid: content.wifi_ssid,
@@ -56,10 +56,10 @@ export default function PortaleOspiti() {
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
-    const { error } = await sb.storage.from(HERO_BUCKET).upload(HERO_PATH, file, { upsert: true, cacheControl: '60' })
+    const { error } = await sb.storage.from(HERO_BUCKET).upload(heroPath(activePropertyId), file, { upsert: true, cacheControl: '60' })
     setUploading(false)
     if (error) { alert('Errore upload: ' + error.message); return }
-    const bustedUrl = `${HERO_PUBLIC_URL_BASE}?v=${Date.now()}`
+    const bustedUrl = `${heroPublicUrl(activePropertyId)}?v=${Date.now()}`
     setHeroPreview(bustedUrl)
     setContent(p => ({ ...p, hero_image_url: bustedUrl }))
   }
@@ -103,7 +103,7 @@ export default function PortaleOspiti() {
 
       <h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 300, fontSize: '1.6rem', color: 'var(--gold)', marginBottom: '0.2rem' }}>
         Portale ospiti
-        <span className="icon-configurable" style={{ marginLeft: '.6rem', fontSize: '1rem' }} title="Sezione configurabile">⚙</span>
+        <span style={{ marginLeft: '.6rem', fontSize: '1rem', cursor: 'help' }} title="Questa intera pagina è la configurazione del Portale Ospiti">⚙</span>
       </h2>
       <p style={{ fontSize: '0.75rem', color: 'var(--salt-faint)', marginBottom: '1.5rem' }}>
         Modifica foto e testi che gli ospiti vedono nel loro Welcome Book (/ospite/:codice).
