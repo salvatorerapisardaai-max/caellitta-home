@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { sb } from '../../lib/supabase'
 import Modal from '../../components/Modal'
+import { useActiveProperty } from '../../lib/PropertyContext'
 
 const PLATFORMS = ['Airbnb', 'Booking.com', 'Diretto', 'Collaboratore']
 const STATUSES = { confirmed: 'badge-green', pending: 'badge-amber', completed: 'badge-gray', cancelled: 'badge-red' }
@@ -48,6 +49,7 @@ function groupTouchesMonth(group, month) {
 }
 
 export default function Prenotazioni() {
+  const { activePropertyId } = useActiveProperty()
   const [bookings, setBookings] = useState([])
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(EMPTY)
@@ -65,21 +67,23 @@ export default function Prenotazioni() {
   const [blockError, setBlockError] = useState('')
   const [collaborators, setCollaborators] = useState([])
 
-  useEffect(() => { load(); loadBlocked(); loadCollaborators() }, [])
+  useEffect(() => {
+    if (activePropertyId) { load(); loadBlocked(); loadCollaborators() }
+  }, [activePropertyId])
 
   async function load() {
-    const { data, error } = await sb.from('bookings').select('*').order('check_in', { ascending: false })
+    const { data, error } = await sb.from('bookings').select('*').eq('property_id', activePropertyId).order('check_in', { ascending: false })
     if (error) { console.error('load error:', error); return }
     setBookings(data || [])
   }
 
   async function loadCollaborators() {
-    const { data } = await sb.from('collaborators').select('id,name,email')
+    const { data } = await sb.from('collaborators').select('id,name,email').eq('property_id', activePropertyId)
     setCollaborators(data || [])
   }
 
   async function loadBlocked() {
-    const { data } = await sb.from('blocked_dates').select('*').order('date')
+    const { data } = await sb.from('blocked_dates').select('*').eq('property_id', activePropertyId).order('date')
     setBlockedDates(data || [])
   }
 
@@ -93,9 +97,9 @@ export default function Prenotazioni() {
 
     const rows = []
     for (let d = new Date(start + 'T00:00:00'); toISODate(d) <= end; d.setDate(d.getDate() + 1)) {
-      rows.push({ date: toISODate(d), reason: newBlockReason || 'Bloccato' })
+      rows.push({ date: toISODate(d), reason: newBlockReason || 'Bloccato', property_id: activePropertyId })
     }
-    const { error } = await sb.from('blocked_dates').upsert(rows, { onConflict: 'date' })
+    const { error } = await sb.from('blocked_dates').upsert(rows, { onConflict: 'date,property_id' })
     if (error) { setBlockError('Errore: ' + error.message); return }
     setNewBlockStart(''); setNewBlockEnd(''); setNewBlockReason('')
     loadBlocked()
@@ -234,7 +238,7 @@ export default function Prenotazioni() {
         }
         if (!guestId) {
           const { data: guest, error: gErr } = await sb.from('guests')
-            .insert({ name: form.guest_name, email: form.guest_email || null, phone: form.guest_phone || null, ...guestDocPayload })
+            .insert({ name: form.guest_name, email: form.guest_email || null, phone: form.guest_phone || null, property_id: activePropertyId, ...guestDocPayload })
             .select().single()
           if (gErr) throw gErr
           guestId = guest?.id
@@ -243,7 +247,7 @@ export default function Prenotazioni() {
         }
         // Il codice prenotazione è assegnato dal trigger set_booking_code lato database
         const { data: newBooking, error: bErr } = await sb.from('bookings')
-          .insert({ ...payload, guest_id: guestId }).select('id').single()
+          .insert({ ...payload, guest_id: guestId, property_id: activePropertyId }).select('id').single()
         if (bErr) throw bErr
         if (newBooking?.id) await enqueueIstatIfNeeded(newBooking.id, payload.status)
       }
