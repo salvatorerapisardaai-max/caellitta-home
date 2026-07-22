@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { sb } from '../../lib/supabase'
+import { useActiveProperty } from '../../lib/PropertyContext'
 
 const VARS_FIELDS = [
   { key: 'name',   label: 'Nome ospite',         ph: 'Marco',              full: true },
@@ -34,6 +35,7 @@ function formatWhatsapp(text) {
 
 export default function WhatsApp() {
   const [searchParams] = useSearchParams()
+  const { activePropertyId } = useActiveProperty()
   const [templates, setTemplates] = useState([])
   const [lang, setLang] = useState('it')
   const [activeId, setActiveId] = useState(null)
@@ -46,7 +48,7 @@ export default function WhatsApp() {
   const [bookings, setBookings] = useState([])
   const [bookingId, setBookingId] = useState('')
 
-  useEffect(() => { loadTemplates(); loadBookings() }, [])
+  useEffect(() => { if (activePropertyId) { loadTemplates(); loadBookings() } }, [activePropertyId])
 
   useEffect(() => {
     // Arrivo da un promemoria (Dashboard): precompila booking e template indicati nell'URL
@@ -71,7 +73,7 @@ export default function WhatsApp() {
   }, [lang, templates.length])
 
   async function loadTemplates() {
-    const { data } = await sb.from('whatsapp_templates').select('*').eq('active', true).order('lang').order('sort_order')
+    const { data } = await sb.from('whatsapp_templates').select('*').eq('property_id', activePropertyId).eq('active', true).order('lang').order('sort_order')
     setTemplates(data || [])
     if (!activeId && data?.length) {
       const first = data.filter(t => t.lang === lang)[0] || data[0]
@@ -80,7 +82,7 @@ export default function WhatsApp() {
   }
 
   async function loadBookings() {
-    const { data } = await sb.from('bookings').select('*').neq('status', 'cancelled').order('check_in', { ascending: false })
+    const { data } = await sb.from('bookings').select('*').eq('property_id', activePropertyId).neq('status', 'cancelled').order('check_in', { ascending: false })
     setBookings(data || [])
   }
 
@@ -138,6 +140,7 @@ export default function WhatsApp() {
     const maxOrder = Math.max(0, ...tpls.map(x => x.sort_order || 0))
     const { data } = await sb.from('whatsapp_templates').insert({
       lang: t.lang, phase: t.phase, timing: t.timing, name: `${t.name} (copia)`, body: t.body, sort_order: maxOrder + 1,
+      property_id: activePropertyId, trigger_event: t.trigger_event, trigger_offset_days: t.trigger_offset_days,
     }).select().single()
     await loadTemplates()
     if (data) startEdit(data)
@@ -154,7 +157,7 @@ export default function WhatsApp() {
     const maxOrder = Math.max(0, ...tpls.map(x => x.sort_order || 0))
     const { data } = await sb.from('whatsapp_templates').insert({
       lang, phase: 'Nuova fase', timing: '', name: 'Nuovo template', body: BLANK_BODY, sort_order: maxOrder + 1,
-      trigger_event: 'check_in', trigger_offset_days: 0,
+      trigger_event: 'check_in', trigger_offset_days: 0, property_id: activePropertyId,
     }).select().single()
     await loadTemplates()
     if (data) startEdit(data)
