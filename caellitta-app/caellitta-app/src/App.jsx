@@ -6,10 +6,13 @@ import Login from './pages/admin/Login'
 import AdminLayout from './components/AdminLayout'
 import Dashboard from './pages/admin/Dashboard'
 import Prenotazioni from './pages/admin/Prenotazioni'
+import Pulizie from './pages/admin/Pulizie'
+import CheckIn from './pages/admin/CheckIn'
 import Spese from './pages/admin/Spese'
 import Convenzioni from './pages/admin/Convenzioni'
 import WhatsApp from './pages/admin/WhatsApp'
 import Team from './pages/admin/Team'
+import Adempimenti from './pages/admin/Adempimenti'
 import GuestAccess from './pages/guest/GuestAccess'
 import WelcomeBook from './pages/guest/WelcomeBook'
 import CollaboratoriLogin from './pages/collaboratori/CollaboratoriLogin'
@@ -18,7 +21,6 @@ import CollaboratoriDashboard from './pages/collaboratori/CollaboratoriDashboard
 export default function App() {
   return (
     <Routes>
-
       {/* LOGIN — pubblica */}
       <Route path="/login" element={<Login />} />
 
@@ -30,10 +32,13 @@ export default function App() {
       }>
         <Route index element={<Dashboard />} />
         <Route path="prenotazioni" element={<Prenotazioni />} />
+        <Route path="pulizie" element={<Pulizie />} />
+        <Route path="checkin" element={<CheckIn />} />
         <Route path="spese" element={<Spese />} />
         <Route path="convenzioni" element={<Convenzioni />} />
         <Route path="whatsapp" element={<WhatsApp />} />
         <Route path="team" element={<Team />} />
+        <Route path="adempimenti" element={<Adempimenti />} />
       </Route>
 
       {/* GUEST — pubblica */}
@@ -50,7 +55,6 @@ export default function App() {
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
-
     </Routes>
   )
 }
