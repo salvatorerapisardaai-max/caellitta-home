@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { sb } from '../../lib/supabase'
 
 const VARS_FIELDS = [
@@ -32,11 +33,12 @@ function formatWhatsapp(text) {
 }
 
 export default function WhatsApp() {
+  const [searchParams] = useSearchParams()
   const [templates, setTemplates] = useState([])
   const [lang, setLang] = useState('it')
   const [activeId, setActiveId] = useState(null)
   const [editingId, setEditingId] = useState(null)
-  const [draft, setDraft] = useState({ name: '', phase: '', timing: '', body: '' })
+  const [draft, setDraft] = useState({ name: '', phase: '', timing: '', body: '', trigger_event: 'check_in', trigger_offset_days: 0 })
   const [savingTpl, setSavingTpl] = useState(false)
   const [copied, setCopied] = useState(false)
   const [vars, setVars] = useState({ name: '', cin: '', cout: '', nights: '', guests: '', code: '', wb: window.location.host })
@@ -45,6 +47,21 @@ export default function WhatsApp() {
   const [bookingId, setBookingId] = useState('')
 
   useEffect(() => { loadTemplates(); loadBookings() }, [])
+
+  useEffect(() => {
+    // Arrivo da un promemoria (Dashboard): precompila booking e template indicati nell'URL
+    const qBooking = searchParams.get('bookingId')
+    const qTemplate = searchParams.get('templateId')
+    if (qTemplate && templates.some(t => t.id === qTemplate)) {
+      const tpl = templates.find(t => t.id === qTemplate)
+      setLang(tpl.lang)
+      setActiveId(tpl.id)
+    }
+    if (qBooking && bookings.some(b => b.id === qBooking)) {
+      applyBooking(qBooking)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templates.length, bookings.length])
 
   useEffect(() => {
     // Al cambio lingua, seleziona il primo template della lingua ed esce da eventuale modifica
@@ -97,7 +114,10 @@ export default function WhatsApp() {
   function startEdit(t) {
     setActiveId(t.id)
     setEditingId(t.id)
-    setDraft({ name: t.name, phase: t.phase, timing: t.timing, body: t.body })
+    setDraft({
+      name: t.name, phase: t.phase, timing: t.timing, body: t.body,
+      trigger_event: t.trigger_event || 'check_in', trigger_offset_days: t.trigger_offset_days ?? 0,
+    })
     setMobileTab('preview')
   }
   function cancelEdit() { setEditingId(null) }
@@ -106,6 +126,7 @@ export default function WhatsApp() {
     setSavingTpl(true)
     await sb.from('whatsapp_templates').update({
       name: draft.name, phase: draft.phase, timing: draft.timing, body: draft.body,
+      trigger_event: draft.trigger_event, trigger_offset_days: Number(draft.trigger_offset_days) || 0,
       updated_at: new Date().toISOString(),
     }).eq('id', editingId)
     setSavingTpl(false)
@@ -133,6 +154,7 @@ export default function WhatsApp() {
     const maxOrder = Math.max(0, ...tpls.map(x => x.sort_order || 0))
     const { data } = await sb.from('whatsapp_templates').insert({
       lang, phase: 'Nuova fase', timing: '', name: 'Nuovo template', body: BLANK_BODY, sort_order: maxOrder + 1,
+      trigger_event: 'check_in', trigger_offset_days: 0,
     }).select().single()
     await loadTemplates()
     if (data) startEdit(data)
@@ -236,6 +258,26 @@ export default function WhatsApp() {
           <input className="form-input" value={draft.timing} onChange={e => setDraft(p => ({ ...p, timing: e.target.value }))} placeholder="Es. -7 giorni" />
         </div>
       </div>
+      <div className="form-grid">
+        <div className="form-group">
+          <label className="form-label">Promemoria: quando</label>
+          <select className="form-select" value={draft.trigger_event} onChange={e => setDraft(p => ({ ...p, trigger_event: e.target.value }))}>
+            <option value="check_in">Rispetto al check-in</option>
+            <option value="check_out">Rispetto al check-out</option>
+            <option value="mid_stay">A metà soggiorno</option>
+          </select>
+        </div>
+        {draft.trigger_event !== 'mid_stay' && (
+          <div className="form-group">
+            <label className="form-label">Giorni di scarto (negativo = prima)</label>
+            <input className="form-input" type="number" value={draft.trigger_offset_days}
+              onChange={e => setDraft(p => ({ ...p, trigger_offset_days: e.target.value }))} placeholder="-7" />
+          </div>
+        )}
+      </div>
+      <p style={{ fontSize: '0.65rem', color: 'var(--salt-faint)', marginTop: '-0.5rem' }}>
+        Determina quando questo template appare tra i "Promemoria da inviare oggi" in Dashboard.
+      </p>
       <div className="form-group">
         <label className="form-label">Messaggio</label>
         <textarea className="form-textarea" style={{ minHeight: 220, fontFamily: 'monospace', fontSize: '0.8rem' }}
