@@ -167,6 +167,15 @@ export default function Prenotazioni() {
     load()
   }
 
+  // Accoda gli invii ISTAT Sicilia (arrivo + partenza) per una prenotazione confermata/completata.
+  // Non bloccante: se fallisce (es. property_id mancante) non impedisce il salvataggio della prenotazione,
+  // ma logga l'errore in console per diagnosi.
+  async function enqueueIstatIfNeeded(bookingId, status) {
+    if (status !== 'confirmed' && status !== 'completed') return
+    const { error } = await sb.rpc('enqueue_istat_for_booking', { p_booking_id: bookingId })
+    if (error) console.error('enqueue_istat_for_booking:', error.message)
+  }
+
   async function save() {
     if (!form.guest_name || !form.check_in || !form.check_out) {
       setSaveError('Nome, check-in e check-out sono obbligatori.')
@@ -215,6 +224,7 @@ export default function Prenotazioni() {
         if (editingOriginal?.guest_id) {
           await sb.from('guests').update(guestDocPayload).eq('id', editingOriginal.guest_id)
         }
+        await enqueueIstatIfNeeded(editing, payload.status)
       } else {
         // Riusa l'ospite esistente (stessa email) invece di duplicarlo in "guests"
         let guestId = null
@@ -232,8 +242,10 @@ export default function Prenotazioni() {
           await sb.from('guests').update(guestDocPayload).eq('id', guestId)
         }
         // Il codice prenotazione è assegnato dal trigger set_booking_code lato database
-        const { error: bErr } = await sb.from('bookings').insert({ ...payload, guest_id: guestId })
+        const { data: newBooking, error: bErr } = await sb.from('bookings')
+          .insert({ ...payload, guest_id: guestId }).select('id').single()
         if (bErr) throw bErr
+        if (newBooking?.id) await enqueueIstatIfNeeded(newBooking.id, payload.status)
       }
       await load()
       setModal(false)
