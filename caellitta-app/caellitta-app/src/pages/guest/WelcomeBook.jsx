@@ -4,16 +4,16 @@ import { sb } from '../../lib/supabase'
 import heroFallback from '../../assets/acicastello.jpg'
 
 // Immagine del Benvenuto servita da Supabase Storage (bucket pubblico "site-media").
-// Per cambiarla basta caricare un file chiamato esattamente "benvenuto.jpg" nel bucket:
-// nessuna modifica al codice, nessun deploy. Finché il file non esiste, si usa il fallback.
-const HERO_URL = 'https://ejjatrfeeatgiqpomibd.supabase.co/storage/v1/object/public/site-media/benvenuto.jpg'
+// Se l'host ha caricato una foto dal Portale Ospiti (guest_portal_content.hero_image_url)
+// quella ha priorità; altrimenti si usa la convenzione fissa "benvenuto.jpg", poi il fallback locale.
+const HERO_URL_DEFAULT = 'https://ejjatrfeeatgiqpomibd.supabase.co/storage/v1/object/public/site-media/benvenuto.jpg'
 
 // Numero WhatsApp principale di Caellitta Home (solo cifre, per i link wa.me)
 const CAELLITTA_WA = '393520124403'
 
-// WiFi reale della struttura
-const WIFI_SSID = 'VodafoneCaellita Home'
-const WIFI_PASSWORD = 'rJT9HdAP2F4Asp96'
+// Fallback WiFi se non ancora configurato dal Portale Ospiti
+const WIFI_SSID_DEFAULT = 'VodafoneCaellita Home'
+const WIFI_PASSWORD_DEFAULT = 'rJT9HdAP2F4Asp96'
 
 // Icone per categoria (coupon_categories.name)
 const CAT_ICONS = {
@@ -47,6 +47,7 @@ export default function WelcomeBook() {
   const navigate  = useNavigate()
   const [booking, setBooking]   = useState(null)
   const [coupons, setCoupons]   = useState([])
+  const [content, setContent]   = useState(null) // guest_portal_content: testi/foto configurabili
   const [chapter, setChapter]   = useState('welcome')
   const [loading, setLoading]   = useState(true)
   const [wifiShown, setWifiShown] = useState(false)
@@ -62,6 +63,12 @@ export default function WelcomeBook() {
     const { data: gc } = await sb.from('guest_coupons')
       .select('*, coupon_templates(*, coupon_categories(name,color,slug))').eq('booking_id', b.id)
     setCoupons(gc || [])
+
+    // Contenuti configurabili del Portale Ospiti (foto, testi, liste). Se non esiste
+    // ancora nessuna riga, i sotto-componenti useranno i loro valori di default.
+    const { data: pc } = await sb.from('guest_portal_content').select('*').limit(1).maybeSingle()
+    setContent(pc || null)
+
     setLoading(false)
   }
 
@@ -101,10 +108,10 @@ export default function WelcomeBook() {
       </div>
 
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '0 0 2rem' }}>
-        {chapter === 'welcome'    && <ChWelcome booking={booking} ci={ci} co={co} wifiShown={wifiShown} setWifiShown={setWifiShown} lang={lang} />}
-        {chapter === 'casa'       && <ChCasa lang={lang} />}
-        {chapter === 'dintorni'   && <ChDintorni lang={lang} />}
-        {chapter === 'regole'     && <ChRegole lang={lang} />}
+        {chapter === 'welcome'    && <ChWelcome booking={booking} ci={ci} co={co} wifiShown={wifiShown} setWifiShown={setWifiShown} lang={lang} content={content} />}
+        {chapter === 'casa'       && <ChCasa lang={lang} items={content?.casa_items} />}
+        {chapter === 'dintorni'   && <ChDintorni lang={lang} items={content?.dintorni_items} />}
+        {chapter === 'regole'     && <ChRegole lang={lang} items={content?.regole_items} />}
         {chapter === 'esperienze' && <ChEsperienze lang={lang} />}
         {chapter === 'coupon'     && <ChCoupon coupons={coupons} useCoupon={useCoupon} lang={lang} />}
         {chapter === 'contatti'   && <ChContatti lang={lang} />}
@@ -142,7 +149,7 @@ export default function WelcomeBook() {
 
 // ── WELCOME ───────────────────────────────────────────────
 
-function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang }) {
+function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang, content }) {
   const [netCopied, setNetCopied] = useState(false)
   const [pwdCopied, setPwdCopied] = useState(false)
 
@@ -152,13 +159,19 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang }) {
   }
 
   const it = lang === 'it'
+  const heroUrl = content?.hero_image_url || HERO_URL_DEFAULT
+  const wifiSsid = content?.wifi_ssid || WIFI_SSID_DEFAULT
+  const wifiPassword = content?.wifi_password || WIFI_PASSWORD_DEFAULT
+  const welcomeText = it
+    ? (content?.welcome_text_it || 'Siamo felici di accoglierti personalmente e consegnarti le chiavi. Caellitta Home è nata per essere vissuta — non solo abitata. Il mare sotto, il castello di lava alle spalle, il profumo di zagara nell\'aria. Questo spazio è tuo.')
+    : (content?.welcome_text_en || 'We will be happy to welcome you personally and hand you the keys. Caellitta Home was built to be lived — not just occupied. The sea below, the lava castle behind you, the scent of orange blossom in the air. This space is yours.')
 
   return (
     <div>
-      {/* HERO — immagine dal bucket "site-media" con fallback all'asset locale */}
+      {/* HERO — immagine dal bucket "site-media" (o override caricato dal Portale Ospiti), con fallback all'asset locale */}
       <div style={{ minHeight: '62vw', maxHeight: 340, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', overflow: 'hidden' }}>
         <img
-          src={HERO_URL}
+          src={heroUrl}
           onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = heroFallback }}
           alt="Aci Castello"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
@@ -174,9 +187,7 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang }) {
         <div style={{ width: 28, height: 1, background: 'var(--gold)', opacity: .55, margin: '1.5rem 0' }} />
 
         <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', fontWeight: 300, lineHeight: 1.85, color: 'rgba(240,235,225,.75)', marginBottom: '1rem' }}>
-          {it
-            ? 'Siamo felici di accoglierti personalmente e consegnarti le chiavi. Caellitta Home è nata per essere vissuta — non solo abitata. Il mare sotto, il castello di lava alle spalle, il profumo di zagara nell\'aria. Questo spazio è tuo.'
-            : 'We will be happy to welcome you personally and hand you the keys. Caellitta Home was built to be lived — not just occupied. The sea below, the lava castle behind you, the scent of orange blossom in the air. This space is yours.'}
+          {welcomeText}
         </p>
 
         <div style={{ width: 28, height: 1, background: 'var(--gold)', opacity: .55, margin: '1.5rem 0' }} />
@@ -202,8 +213,8 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid var(--gold-dim)' }}>
               <span style={{ fontSize: '0.6rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(240,235,225,.28)' }}>{it ? 'Rete' : 'Network'}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--gold)' }}>{WIFI_SSID}</span>
-                <button onClick={() => copyText(WIFI_SSID, setNetCopied)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: netCopied ? '#7dcca0' : 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
+                <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--gold)' }}>{wifiSsid}</span>
+                <button onClick={() => copyText(wifiSsid, setNetCopied)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: netCopied ? '#7dcca0' : 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
                   {netCopied ? (it ? 'Copiato' : 'Copied') : (it ? 'Copia' : 'Copy')}
                 </button>
               </div>
@@ -211,12 +222,12 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0' }}>
               <span style={{ fontSize: '0.6rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(240,235,225,.28)' }}>Password</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--gold)' }}>{wifiShown ? WIFI_PASSWORD : '••••••••••••'}</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--gold)' }}>{wifiShown ? wifiPassword : '••••••••••••'}</span>
                 <button onClick={() => setWifiShown(!wifiShown)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
                   {wifiShown ? (it ? 'Nascondi' : 'Hide') : (it ? 'Mostra' : 'Show')}
                 </button>
                 {wifiShown && (
-                  <button onClick={() => copyText(WIFI_PASSWORD, setPwdCopied)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: pwdCopied ? '#7dcca0' : 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
+                  <button onClick={() => copyText(wifiPassword, setPwdCopied)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: pwdCopied ? '#7dcca0' : 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
                     {pwdCopied ? (it ? 'Copiato' : 'Copied') : (it ? 'Copia' : 'Copy')}
                   </button>
                 )}
@@ -242,46 +253,19 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang }) {
 }
 
 // ── LA CASA ───────────────────────────────────────────────
+// items: opzionale, da guest_portal_content.casa_items. Se assente/vuoto, usa i valori di default.
 
-function ChCasa({ lang }) {
+const CASA_DEFAULT = [
+  { icon: '🔑', title_it: 'Check-in', title_en: 'Check-in', text_it: 'Saremo felici di accoglierti personalmente e consegnarti le chiavi della porta al tuo arrivo.', text_en: 'We will be happy to welcome you personally and hand you the door keys upon your arrival.' },
+  { icon: '🅿️', title_it: 'Parcheggio', title_en: 'Parking', text_it: 'Parcheggio a pagamento su strada secondo il tariffario orario lungo il lungomare su cui si trova la casa.', text_en: 'Paid on-street parking at hourly rates along the seafront promenade where the house is located.' },
+  { icon: '🏠', title_it: 'Piano', title_en: 'Floor', text_it: 'Appartamento al primo piano. Si accede tramite scala (no ascensore).', text_en: 'Apartment on the first floor. Access via stairs (no lift).' },
+  { icon: '🧺', title_it: 'Biancheria', title_en: 'Linen', text_it: 'Lenzuola e asciugamani puliti. Cambio biancheria su richiesta.', text_en: 'Clean bed linen and towels provided. Linen change available on request.' },
+  { icon: '🍳', title_it: 'Cucina', title_en: 'Kitchen', text_it: 'Completamente attrezzata: pentole, stoviglie, macchina del caffè, friggitrice ad aria, piano a induzione, forno.', text_en: 'Fully equipped: pots, dishes, coffee machine, air fryer, induction hob, oven.' },
+]
+
+function ChCasa({ lang, items }) {
   const it = lang === 'it'
-  const items = [
-    {
-      icon: '🔑',
-      titleIt: 'Check-in',
-      titleEn: 'Check-in',
-      textIt: 'Saremo felici di accoglierti personalmente e consegnarti le chiavi della porta al tuo arrivo.',
-      textEn: 'We will be happy to welcome you personally and hand you the door keys upon your arrival.',
-    },
-    {
-      icon: '🅿️',
-      titleIt: 'Parcheggio',
-      titleEn: 'Parking',
-      textIt: 'Parcheggio a pagamento su strada secondo il tariffario orario lungo il lungomare su cui si trova la casa.',
-      textEn: 'Paid on-street parking at hourly rates along the seafront promenade where the house is located.',
-    },
-    {
-      icon: '🏠',
-      titleIt: 'Piano',
-      titleEn: 'Floor',
-      textIt: 'Appartamento al primo piano. Si accede tramite scala (no ascensore).',
-      textEn: 'Apartment on the first floor. Access via stairs (no lift).',
-    },
-    {
-      icon: '🧺',
-      titleIt: 'Biancheria',
-      titleEn: 'Linen',
-      textIt: 'Lenzuola e asciugamani puliti. Cambio biancheria su richiesta.',
-      textEn: 'Clean bed linen and towels provided. Linen change available on request.',
-    },
-    {
-      icon: '🍳',
-      titleIt: 'Cucina',
-      titleEn: 'Kitchen',
-      textIt: 'Completamente attrezzata: pentole, stoviglie, macchina del caffè, friggitrice ad aria, piano a induzione, forno.',
-      textEn: 'Fully equipped: pots, dishes, coffee machine, air fryer, induction hob, oven.',
-    },
-  ]
+  const list = (items && items.length > 0) ? items : CASA_DEFAULT
 
   return (
     <div>
@@ -296,15 +280,15 @@ function ChCasa({ lang }) {
       </div>
       <div style={{ padding: '0 1.5rem' }}>
         <div style={{ width: 28, height: 1, background: 'var(--gold)', opacity: .55, margin: '1.5rem 0' }} />
-        {items.map(item => (
-          <div key={item.titleIt} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '1.1rem 1.3rem', marginBottom: '0.65rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+        {list.map((item, idx) => (
+          <div key={item.title_it || idx} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '1.1rem 1.3rem', marginBottom: '0.65rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{item.icon}</span>
             <div>
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem', marginBottom: '0.3rem' }}>
-                {it ? item.titleIt : item.titleEn}
+                {it ? item.title_it : item.title_en}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--salt-dim)', lineHeight: 1.7, fontWeight: 200 }}>
-                {it ? item.textIt : item.textEn}
+                {it ? item.text_it : item.text_en}
               </div>
             </div>
           </div>
@@ -316,31 +300,15 @@ function ChCasa({ lang }) {
 
 // ── DINTORNI ──────────────────────────────────────────────
 
-function ChDintorni({ lang }) {
+const DINTORNI_DEFAULT = [
+  { icon: '🛒', title_it: 'Supermercato', title_en: 'Supermarket', text_it: 'A pochi passi da casa, in Via Re Martino 4, trovi un supermercato appena aperto per la spesa quotidiana.', text_en: 'Just a short walk away, at Via Re Martino 4, you\'ll find a newly opened supermarket for your daily shopping.' },
+  { icon: '🌊', title_it: 'Il lungomare', title_en: 'The seafront promenade', text_it: 'La casa si affaccia direttamente sul lungomare: scendi e sei tra locali, bar e american bar, perfetti per un aperitivo al tramonto o una passeggiata serale sul mare.', text_en: 'The house looks directly onto the seafront promenade: step outside and you\'re among local venues, bars and cocktail spots, perfect for a sunset drink or an evening stroll by the sea.' },
+  { icon: '🏰', title_it: 'Il Castello Normanno', title_en: 'The Norman Castle', text_it: 'A pochi minuti a piedi puoi visitare il Castello Normanno di Aci Castello, uno dei simboli della costa, con una vista sul mare che vale la salita.', text_en: 'A short walk away you can visit the Norman Castle of Aci Castello, one of the landmarks of this coast, with a sea view well worth the climb.' },
+]
+
+function ChDintorni({ lang, items }) {
   const it = lang === 'it'
-  const items = [
-    {
-      icon: '🛒',
-      titleIt: 'Supermercato',
-      titleEn: 'Supermarket',
-      textIt: 'A pochi passi da casa, in Via Re Martino 4, trovi un supermercato appena aperto per la spesa quotidiana.',
-      textEn: 'Just a short walk away, at Via Re Martino 4, you\'ll find a newly opened supermarket for your daily shopping.',
-    },
-    {
-      icon: '🌊',
-      titleIt: 'Il lungomare',
-      titleEn: 'The seafront promenade',
-      textIt: 'La casa si affaccia direttamente sul lungomare: scendi e sei tra locali, bar e american bar, perfetti per un aperitivo al tramonto o una passeggiata serale sul mare.',
-      textEn: 'The house looks directly onto the seafront promenade: step outside and you\'re among local venues, bars and cocktail spots, perfect for a sunset drink or an evening stroll by the sea.',
-    },
-    {
-      icon: '🏰',
-      titleIt: 'Il Castello Normanno',
-      titleEn: 'The Norman Castle',
-      textIt: 'A pochi minuti a piedi puoi visitare il Castello Normanno di Aci Castello, uno dei simboli della costa, con una vista sul mare che vale la salita.',
-      textEn: 'A short walk away you can visit the Norman Castle of Aci Castello, one of the landmarks of this coast, with a sea view well worth the climb.',
-    },
-  ]
+  const list = (items && items.length > 0) ? items : DINTORNI_DEFAULT
 
   return (
     <div>
@@ -355,15 +323,15 @@ function ChDintorni({ lang }) {
       </div>
       <div style={{ padding: '0 1.5rem' }}>
         <div style={{ width: 28, height: 1, background: 'var(--gold)', opacity: .55, margin: '1.5rem 0' }} />
-        {items.map(item => (
-          <div key={item.titleIt} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '1.1rem 1.3rem', marginBottom: '0.65rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+        {list.map((item, idx) => (
+          <div key={item.title_it || idx} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '1.1rem 1.3rem', marginBottom: '0.65rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{item.icon}</span>
             <div>
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem', marginBottom: '0.3rem' }}>
-                {it ? item.titleIt : item.titleEn}
+                {it ? item.title_it : item.title_en}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--salt-dim)', lineHeight: 1.7, fontWeight: 200 }}>
-                {it ? item.textIt : item.textEn}
+                {it ? item.text_it : item.text_en}
               </div>
             </div>
           </div>
@@ -375,16 +343,18 @@ function ChDintorni({ lang }) {
 
 // ── REGOLE ────────────────────────────────────────────────
 
-function ChRegole({ lang }) {
+const REGOLE_DEFAULT = [
+  { icon: '🔇', title_it: 'Silenzio notturno', title_en: 'Quiet hours', text_it: 'Rispetto del silenzio dalla sera. I vicini ringraziano.', text_en: 'Please respect quiet hours in the evening. Your neighbours will thank you.' },
+  { icon: '🚭', title_it: 'No fumo in casa', title_en: 'No smoking indoors', text_it: 'Ti chiediamo di non fumare all\'interno dell\'appartamento.', text_en: 'Please do not smoke inside the apartment.' },
+  { icon: '🐾', title_it: 'Animali', title_en: 'Pets', text_it: 'Benvenuti solo se concordato anticipatamente.', text_en: 'Welcome only if agreed in advance.' },
+  { icon: '🗑', title_it: 'Raccolta differenziata', title_en: 'Recycling', text_it: 'Umido, plastica, carta, vetro. Calendario raccolta in bacheca.', text_en: 'Organic, plastic, paper, glass. Collection calendar on the noticeboard.' },
+  { icon: '🏡', title_it: 'Cura degli spazi', title_en: 'Care of the space', text_it: 'Ti chiediamo di lasciare la casa nelle stesse condizioni in cui l\'hai trovata.', text_en: 'Please leave the house in the same condition as you found it.' },
+  { icon: '💧', title_it: 'Acqua', title_en: 'Water', text_it: 'Evita sprechi. L\'acqua è un bene prezioso in Sicilia.', text_en: 'Avoid waste. Water is precious in Sicily.' },
+]
+
+function ChRegole({ lang, items }) {
   const it = lang === 'it'
-  const rules = [
-    { icon: '🔇', titleIt: 'Silenzio notturno', titleEn: 'Quiet hours', textIt: 'Rispetto del silenzio dalla sera. I vicini ringraziano.', textEn: 'Please respect quiet hours in the evening. Your neighbours will thank you.' },
-    { icon: '🚭', titleIt: 'No fumo in casa', titleEn: 'No smoking indoors', textIt: 'Ti chiediamo di non fumare all\'interno dell\'appartamento.', textEn: 'Please do not smoke inside the apartment.' },
-    { icon: '🐾', titleIt: 'Animali', titleEn: 'Pets', textIt: 'Benvenuti solo se concordato anticipatamente.', textEn: 'Welcome only if agreed in advance.' },
-    { icon: '🗑', titleIt: 'Raccolta differenziata', titleEn: 'Recycling', textIt: 'Umido, plastica, carta, vetro. Calendario raccolta in bacheca.', textEn: 'Organic, plastic, paper, glass. Collection calendar on the noticeboard.' },
-    { icon: '🏡', titleIt: 'Cura degli spazi', titleEn: 'Care of the space', textIt: 'Ti chiediamo di lasciare la casa nelle stesse condizioni in cui l\'hai trovata.', textEn: 'Please leave the house in the same condition as you found it.' },
-    { icon: '💧', titleIt: 'Acqua', titleEn: 'Water', textIt: 'Evita sprechi. L\'acqua è un bene prezioso in Sicilia.', textEn: 'Avoid waste. Water is precious in Sicily.' },
-  ]
+  const rules = (items && items.length > 0) ? items : REGOLE_DEFAULT
 
   return (
     <div>
@@ -400,12 +370,12 @@ function ChRegole({ lang }) {
       <div style={{ padding: '0 1.5rem' }}>
         <div style={{ width: 28, height: 1, background: 'var(--gold)', opacity: .55, margin: '1.5rem 0' }} />
         <ul style={{ listStyle: 'none' }}>
-          {rules.map(r => (
-            <li key={r.titleIt} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', padding: '0.8rem 0', borderBottom: '1px solid var(--gold-dim)', fontSize: '0.8rem', fontWeight: 200, color: 'var(--salt-dim)', lineHeight: 1.65 }}>
+          {rules.map((r, idx) => (
+            <li key={r.title_it || idx} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', padding: '0.8rem 0', borderBottom: '1px solid var(--gold-dim)', fontSize: '0.8rem', fontWeight: 200, color: 'var(--salt-dim)', lineHeight: 1.65 }}>
               <span style={{ fontSize: '0.9rem', flexShrink: 0, marginTop: '0.05rem' }}>{r.icon}</span>
               <div>
-                <strong style={{ color: 'var(--salt)', fontWeight: 400 }}>{it ? r.titleIt : r.titleEn}</strong>
-                <br/>{it ? r.textIt : r.textEn}
+                <strong style={{ color: 'var(--salt)', fontWeight: 400 }}>{it ? r.title_it : r.title_en}</strong>
+                <br/>{it ? r.text_it : r.text_en}
               </div>
             </li>
           ))}
