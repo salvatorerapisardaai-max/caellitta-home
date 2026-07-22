@@ -64,9 +64,9 @@ export default function WelcomeBook() {
       .select('*, coupon_templates(*, coupon_categories(name,color,slug))').eq('booking_id', b.id)
     setCoupons(gc || [])
 
-    // Contenuti configurabili del Portale Ospiti (foto, testi, liste). Se non esiste
-    // ancora nessuna riga, i sotto-componenti useranno i loro valori di default.
-    const { data: pc } = await sb.from('guest_portal_content').select('*').limit(1).maybeSingle()
+    // Contenuti configurabili del Portale Ospiti (foto, testi, liste), della STESSA
+    // struttura della prenotazione — essenziale ora che esistono più clienti/strutture.
+    const { data: pc } = await sb.from('guest_portal_content').select('*').eq('property_id', b.property_id).maybeSingle()
     setContent(pc || null)
 
     setLoading(false)
@@ -112,7 +112,7 @@ export default function WelcomeBook() {
         {chapter === 'casa'       && <ChCasa lang={lang} items={content?.casa_items} />}
         {chapter === 'dintorni'   && <ChDintorni lang={lang} items={content?.dintorni_items} />}
         {chapter === 'regole'     && <ChRegole lang={lang} items={content?.regole_items} />}
-        {chapter === 'esperienze' && <ChEsperienze lang={lang} />}
+        {chapter === 'esperienze' && <ChEsperienze lang={lang} propertyId={booking.property_id} />}
         {chapter === 'coupon'     && <ChCoupon coupons={coupons} useCoupon={useCoupon} lang={lang} />}
         {chapter === 'contatti'   && <ChContatti lang={lang} />}
       </div>
@@ -389,7 +389,7 @@ function ChRegole({ lang, items }) {
 // Data-driven: legge le convenzioni attive da Supabase (coupon_templates),
 // le stesse che gestisci nel gestionale → sempre allineate.
 
-function ChEsperienze({ lang }) {
+function ChEsperienze({ lang, propertyId }) {
   const it = lang === 'it'
   const [cats, setCats]       = useState([])
   const [loading, setLoading] = useState(true)
@@ -399,6 +399,7 @@ function ChEsperienze({ lang }) {
       const { data } = await sb
         .from('coupon_templates')
         .select('id, partner, title, title_en, discount, description, description_en, coupon_categories(name,color,slug)')
+        .eq('property_id', propertyId)
         .eq('active', true)
         .order('title')
 
