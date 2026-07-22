@@ -11,6 +11,7 @@ import CheckIn from './pages/admin/CheckIn'
 import Spese from './pages/admin/Spese'
 import Convenzioni from './pages/admin/Convenzioni'
 import WhatsApp from './pages/admin/WhatsApp'
+import PortaleOspiti from './pages/admin/PortaleOspiti'
 import Team from './pages/admin/Team'
 import Adempimenti from './pages/admin/Adempimenti'
 import GuestAccess from './pages/guest/GuestAccess'
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="spese" element={<Spese />} />
         <Route path="convenzioni" element={<Convenzioni />} />
         <Route path="whatsapp" element={<WhatsApp />} />
+        <Route path="portale-ospiti" element={<PortaleOspiti />} />
         <Route path="team" element={<Team />} />
         <Route path="adempimenti" element={<Adempimenti />} />
       </Route>
