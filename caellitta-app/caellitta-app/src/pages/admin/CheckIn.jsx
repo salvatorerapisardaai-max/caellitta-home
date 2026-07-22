@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { sb } from '../../lib/supabase'
+import { useActiveProperty } from '../../lib/PropertyContext'
 
 const COMP_LABELS = {
   percentage: '% importo prenotazione',
@@ -10,18 +12,20 @@ const COMP_LABELS = {
 const COMP_UNIT_LABEL = { hourly: 'Ore', per_room: 'N° stanze' }
 
 export default function CheckIn() {
+  const navigate = useNavigate()
+  const { activePropertyId } = useActiveProperty()
   const [bookings, setBookings] = useState([])
   const [collaborators, setCollaborators] = useState([])
   const [kind, setKind] = useState('checkin') // checkin | checkout
   const [tab, setTab] = useState('da_fare')
   const [savingId, setSavingId] = useState(null)
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { if (activePropertyId) load() }, [activePropertyId])
 
   async function load() {
-    const { data: bk } = await sb.from('bookings').select('*').neq('status', 'cancelled').order('check_in', { ascending: true })
+    const { data: bk } = await sb.from('bookings').select('*').eq('property_id', activePropertyId).neq('status', 'cancelled').order('check_in', { ascending: true })
     setBookings(bk || [])
-    const { data: cs } = await sb.from('collaborators').select('id,name,email,active,compensation_type,default_rate').eq('active', true)
+    const { data: cs } = await sb.from('collaborators').select('id,name,email,active,compensation_type,default_rate').eq('property_id', activePropertyId).eq('active', true)
     setCollaborators(cs || [])
   }
 
@@ -74,7 +78,9 @@ export default function CheckIn() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '.6rem' }}>
         <h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 300, fontSize: '1.6rem', color: 'var(--gold)' }}>
           Check-in / Check-out
-          <span className="icon-configurable" title="Configura compensi predefiniti da Team" style={{ marginLeft: '.6rem', fontSize: '1rem' }}>⚙</span>
+          <span className="icon-configurable" title="Configura compensi predefiniti da Team" role="button" tabIndex={0}
+            onClick={() => navigate('/team')} onKeyDown={e => e.key === 'Enter' && navigate('/team')}
+            style={{ marginLeft: '.6rem', fontSize: '1rem' }}>⚙</span>
         </h2>
         <div style={{ display: 'flex', gap: '.4rem' }}>
           <button className="btn-sm" onClick={() => { setKind('checkin'); setTab('da_fare') }} style={kind === 'checkin' ? { borderColor: 'var(--gold)', color: 'var(--gold)' } : {}}>🔑 Check-in</button>
