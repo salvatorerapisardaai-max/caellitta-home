@@ -7,6 +7,7 @@ export default function Dashboard() {
   const [expenses, setExpenses] = useState([])
   const [blockedDates, setBlockedDates] = useState([])
   const [guestCoupons, setGuestCoupons] = useState([])
+  const [waTemplates, setWaTemplates] = useState([])
   const [calMonth, setCalMonth] = useState(getRomeDate())
 
   const navigate = useNavigate()
@@ -39,10 +40,16 @@ export default function Dashboard() {
       .from('guest_coupons')
       .select('commission, commission_settled')
 
+    const { data: wt } = await sb
+      .from('whatsapp_templates')
+      .select('id, lang, name, trigger_event, trigger_offset_days')
+      .eq('active', true)
+
     setBookings(bk || [])
     setExpenses(ex || [])
     setBlockedDates(bd || [])
     setGuestCoupons(gc || [])
+    setWaTemplates(wt || [])
   }
 
   const today = getRomeDate()
@@ -119,6 +126,26 @@ export default function Dashboard() {
     .filter(b => b.checkout_by && b.checkout_at && !b.checkout_settled)
     .reduce((s, b) => s + (b.checkout_amount_due || 0), 0)
   const operationalToSettle = cleaningToSettle + checkinToSettle + checkoutToSettle
+
+  // ───────────── PROMEMORIA WHATSAPP (da inviare oggi) ─────────────
+  // Per ogni prenotazione attiva, verifica se un template attivo "scatta" oggi
+  // in base a trigger_event (check_in/check_out/mid_stay) e trigger_offset_days.
+  const waReminders = []
+  for (const b of bookings) {
+    if (b.status === 'cancelled' || !b.check_in || !b.check_out) continue
+    for (const tpl of waTemplates) {
+      let targetIso = null
+      if (tpl.trigger_event === 'check_in') targetIso = addDaysIso(b.check_in, tpl.trigger_offset_days || 0)
+      else if (tpl.trigger_event === 'check_out') targetIso = addDaysIso(b.check_out, tpl.trigger_offset_days || 0)
+      else if (tpl.trigger_event === 'mid_stay') {
+        const nights = daysBetween(b.check_in, b.check_out)
+        if (nights >= 2) targetIso = addDaysIso(b.check_in, Math.floor(nights / 2))
+      }
+      if (targetIso === todayIso) {
+        waReminders.push({ booking: b, template: tpl })
+      }
+    }
+  }
 
   // ───────────── CALENDAR ─────────────
   const year = calMonth.getFullYear()
@@ -306,6 +333,31 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* ───────────────── PROMEMORIA WHATSAPP DA INVIARE OGGI ───────────────── */}
+      {waReminders.length > 0 && (
+        <div className="card" style={{ marginBottom: '1.2rem', borderColor: 'rgba(37,211,102,.35)' }}>
+          <div className="sec-hdr">
+            <span className="sec-title">💬 Promemoria WhatsApp — da inviare oggi</span>
+            <span className="badge badge-green">{waReminders.length}</span>
+          </div>
+          {waReminders.map((r, i) => (
+            <div key={i} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem',
+              padding: '0.7rem 0', borderBottom: i < waReminders.length - 1 ? '1px solid var(--gold-dim)' : 'none',
+            }}>
+              <div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem' }}>{r.booking.guest_name}</div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--salt-faint)' }}>{r.template.name} ({r.template.lang.toUpperCase()})</div>
+              </div>
+              <button className="btn-sm" style={{ borderColor: '#25D366', color: '#25D366' }}
+                onClick={() => navigate(`/whatsapp?bookingId=${r.booking.id}&templateId=${r.template.id}`)}>
+                Apri messaggio →
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ───────────────── MAIN GRID ───────────────── */}
       <div className="dashboard-main-grid">
@@ -911,6 +963,12 @@ function toISO(date) {
 
 function daysBetween(isoA, isoB) {
   return Math.round((new Date(isoB + 'T00:00:00Z') - new Date(isoA + 'T00:00:00Z')) / 86400000)
+}
+
+function addDaysIso(iso, n) {
+  const d = new Date(iso + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
 }
 
 function getRomeDate() {
