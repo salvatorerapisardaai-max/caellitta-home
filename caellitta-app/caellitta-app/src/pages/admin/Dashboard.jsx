@@ -75,6 +75,17 @@ export default function Dashboard() {
     .filter(e => e.date?.slice(0, 7) === thisMonthKey)
     .reduce((s, e) => s + (e.amount || 0), 0)
 
+  // ───────────── TOTALI COMPLESSIVI (da sempre, non solo il mese corrente) ─────────────
+  const totalRevenueAllTime = bookings
+    .filter(b => b.status === 'confirmed' || b.status === 'completed')
+    .reduce((s, b) => s + (b.amount_total || 0), 0)
+
+  const totalExpensesAllTime = (expenses || []).reduce((s, e) => s + (e.amount || 0), 0)
+
+  const totalMarginAllTime = totalRevenueAllTime - totalExpensesAllTime
+
+  const totalBookingsCount = bookings.filter(b => b.status === 'confirmed' || b.status === 'completed').length
+
   // Tasso di occupazione del mese corrente: notti prenotate (qualunque stato non annullato) / giorni del mese
   const monthStartIso = toISO(new Date(thisYear, thisMonth, 1))
   const monthEndIso = toISO(new Date(thisYear, thisMonth + 1, 1))
@@ -96,6 +107,18 @@ export default function Dashboard() {
   const commissionToCollect = guestCoupons
     .filter(gc => !gc.commission_settled && gc.commission)
     .reduce((s, gc) => s + (gc.commission || 0), 0)
+
+  // Compensi da liquidare per pulizie / check-in / check-out (nuovo modello di compenso)
+  const cleaningToSettle = bookings
+    .filter(b => b.cleaning_by && b.cleaning_at && !b.cleaning_settled)
+    .reduce((s, b) => s + (b.cleaning_amount_due || 0), 0)
+  const checkinToSettle = bookings
+    .filter(b => b.checkin_by && b.checkin_at && !b.checkin_settled)
+    .reduce((s, b) => s + (b.checkin_amount_due || 0), 0)
+  const checkoutToSettle = bookings
+    .filter(b => b.checkout_by && b.checkout_at && !b.checkout_settled)
+    .reduce((s, b) => s + (b.checkout_amount_due || 0), 0)
+  const operationalToSettle = cleaningToSettle + checkinToSettle + checkoutToSettle
 
   // ───────────── CALENDAR ─────────────
   const year = calMonth.getFullYear()
@@ -179,7 +202,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      {/* ───────────────── KPI ───────────────── */}
+      {/* ───────────────── KPI (mese corrente) ───────────────── */}
       <div className="dashboard-kpi-grid">
         <KPI
           label="Ospiti ora"
@@ -225,7 +248,7 @@ export default function Dashboard() {
         />
 
         <KPI
-          label="Margine"
+          label="Margine mese"
           value={`€${(monthRevenue - monthExpenses).toLocaleString('it')}`}
           sub="entrate - spese"
           color={monthRevenue - monthExpenses >= 0 ? 'green' : 'red'}
@@ -247,6 +270,41 @@ export default function Dashboard() {
           color={commissionToCollect > 0 ? 'gold' : 'green'}
           accent="gold"
         />
+      </div>
+
+      {/* ───────────────── TOTALE COMPLESSIVO (da sempre) ───────────────── */}
+      <div className="card" style={{ marginBottom: '1.2rem' }}>
+        <div className="sec-hdr">
+          <span className="sec-title">Totale complessivo</span>
+          <span style={{ fontSize: '0.65rem', color: 'var(--salt-faint)' }}>
+            {totalBookingsCount} prenotazioni confermate/completate, da sempre
+          </span>
+        </div>
+        <div className="totali-grid">
+          <div className="totali-item">
+            <div className="totali-label">Entrate totali</div>
+            <div className="totali-value" style={{ color: '#7dcca0' }}>€{totalRevenueAllTime.toLocaleString('it')}</div>
+          </div>
+          <div className="totali-item">
+            <div className="totali-label">Spese totali</div>
+            <div className="totali-value" style={{ color: '#e08080' }}>−€{totalExpensesAllTime.toLocaleString('it')}</div>
+          </div>
+          <div className="totali-item">
+            <div className="totali-label">Margine netto</div>
+            <div className="totali-value" style={{ color: totalMarginAllTime >= 0 ? 'var(--gold)' : '#e08080' }}>
+              €{totalMarginAllTime.toLocaleString('it')}
+            </div>
+          </div>
+          <div className="totali-item">
+            <div className="totali-label">Compensi operativi da liquidare</div>
+            <div className="totali-value" style={{ color: operationalToSettle > 0 ? '#e0a862' : '#7dcca0' }}>
+              €{operationalToSettle.toFixed(2)}
+            </div>
+            <div style={{ fontSize: '0.6rem', color: 'var(--salt-faint)', marginTop: '0.2rem' }}>
+              pulizie €{cleaningToSettle.toFixed(0)} · check-in €{checkinToSettle.toFixed(0)} · check-out €{checkoutToSettle.toFixed(0)}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ───────────────── MAIN GRID ───────────────── */}
@@ -684,7 +742,7 @@ export default function Dashboard() {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
           gap: 1rem;
-          margin-bottom: 2rem;
+          margin-bottom: 1.2rem;
         }
 
         .dashboard-main-grid {
@@ -702,6 +760,27 @@ export default function Dashboard() {
           border-bottom: 1px solid var(--gold-dim);
         }
 
+        .totali-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+          gap: 1.2rem;
+          margin-top: 0.6rem;
+        }
+
+        .totali-label {
+          font-size: 0.58rem;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: var(--salt-faint);
+          margin-bottom: 0.4rem;
+        }
+
+        .totali-value {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 1.7rem;
+          line-height: 1;
+        }
+
         @media (max-width: 768px) {
 
           .dashboard-kpi-grid {
@@ -715,6 +794,10 @@ export default function Dashboard() {
           .expense-row {
             grid-template-columns: 1fr !important;
             gap: 0.5rem !important;
+          }
+
+          .totali-grid {
+            grid-template-columns: 1fr 1fr !important;
           }
 
           .sec-hdr {
