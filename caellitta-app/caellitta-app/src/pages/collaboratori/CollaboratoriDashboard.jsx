@@ -203,7 +203,7 @@ export default function CollaboratoriDashboard() {
       tasks: 'Compiti di oggi', taskCheckin: 'Check-in', taskCheckout: 'Check-out', taskCleaning: 'Pulizie',
       markDone: 'Segna fatto', noTasks: 'Nessun compito in sospeso',
       blockDates: '📅 Blocca più date', blockReason: 'Motivo (opzionale)', blockDone: 'Date bloccate',
-      blockCount: 'giorni bloccati',
+      blockCount: 'giorni bloccati', earned: 'da liquidare', settled: 'liquidato',
     },
     en: {
       title: 'Availability', legend: ['Free', 'Booked', 'Pending', 'Blocked'], logout: 'Log out',
@@ -214,7 +214,7 @@ export default function CollaboratoriDashboard() {
       tasks: "Today's tasks", taskCheckin: 'Check-in', taskCheckout: 'Check-out', taskCleaning: 'Cleaning',
       markDone: 'Mark done', noTasks: 'No pending tasks',
       blockDates: '📅 Block several dates', blockReason: 'Reason (optional)', blockDone: 'Dates blocked',
-      blockCount: 'days blocked',
+      blockCount: 'days blocked', earned: 'to be paid', settled: 'paid',
     },
   }[lang]
 
@@ -226,6 +226,16 @@ export default function CollaboratoriDashboard() {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
     return { year: d.getFullYear(), month: d.getMonth() }
   })
+
+  // Compenso totale ancora da liquidare per me su check-in/out/pulizie (i valori sono già
+  // filtrati dalla RPC: non nulli solo se il compito è mio — nessun altro dato è esposto)
+  const myTotalToSettle = tasks.reduce((sum, task) => {
+    let s = 0
+    if (task.checkin_amount_due != null && !task.checkin_settled) s += task.checkin_amount_due
+    if (task.checkout_amount_due != null && !task.checkout_settled) s += task.checkout_amount_due
+    if (task.cleaning_amount_due != null && !task.cleaning_settled) s += task.cleaning_amount_due
+    return sum + s
+  }, 0)
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--lava)', padding: '2rem', fontFamily: "'Jost', sans-serif" }}>
@@ -265,6 +275,21 @@ export default function CollaboratoriDashboard() {
           </div>
         )}
 
+        {/* TOTALE DA LIQUIDARE (check-in/out/pulizie) */}
+        {myTotalToSettle > 0 && (
+          <div style={{
+            background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '0.9rem 1.2rem',
+            marginBottom: '1.2rem', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '0.58rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--salt-faint)', marginBottom: '0.3rem' }}>
+              {t.earned} (check-in/out · pulizie)
+            </div>
+            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.5rem', color: 'var(--gold)' }}>
+              €{myTotalToSettle.toFixed(2)}
+            </div>
+          </div>
+        )}
+
         <div style={{ textAlign: 'center', marginBottom: '1.5rem', display: 'flex', gap: '0.6rem', justifyContent: 'center', flexWrap: 'wrap' }}>
           <button className="btn-primary" onClick={openNew}>{t.newBooking}</button>
           <button className="btn-ghost" onClick={openBlock}>{t.blockDates}</button>
@@ -283,17 +308,20 @@ export default function CollaboratoriDashboard() {
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   {task.check_in === todayIso && (
                     task.checkin_by
-                      ? <span style={{ fontSize: '0.62rem', color: '#7dcca0' }}>✓ {t.taskCheckin}: {task.checkin_by_name}</span>
+                      ? <TaskDone label={t.taskCheckin} icon="🔑" byName={task.checkin_by_name}
+                          amount={task.checkin_amount_due} settled={task.checkin_settled} t={t} />
                       : <button className="btn-sm" onClick={() => markTask(task.id, 'checkin')}>🔑 {t.taskCheckin} · {t.markDone}</button>
                   )}
                   {task.check_out === todayIso && (
                     task.checkout_by
-                      ? <span style={{ fontSize: '0.62rem', color: '#7dcca0' }}>✓ {t.taskCheckout}: {task.checkout_by_name}</span>
+                      ? <TaskDone label={t.taskCheckout} icon="🚪" byName={task.checkout_by_name}
+                          amount={task.checkout_amount_due} settled={task.checkout_settled} t={t} />
                       : <button className="btn-sm" onClick={() => markTask(task.id, 'checkout')}>🚪 {t.taskCheckout} · {t.markDone}</button>
                   )}
                   {task.check_out <= todayIso && (
                     task.cleaning_by
-                      ? <span style={{ fontSize: '0.62rem', color: '#7dcca0' }}>✓ {t.taskCleaning}: {task.cleaning_by_name}</span>
+                      ? <TaskDone label={t.taskCleaning} icon="🧹" byName={task.cleaning_by_name}
+                          amount={task.cleaning_amount_due} settled={task.cleaning_settled} t={t} />
                       : <button className="btn-sm" onClick={() => markTask(task.id, 'cleaning')}>🧹 {t.taskCleaning} · {t.markDone}</button>
                   )}
                 </div>
@@ -450,5 +478,20 @@ export default function CollaboratoriDashboard() {
         )}
       </Modal>
     </div>
+  )
+}
+
+// Riga di compito già assegnato: nome di chi lo ha fatto, e se sono io mostra anche il compenso
+// (amount è già null lato server se il compito non è mio — nessuna informazione di altri esposta)
+function TaskDone({ label, icon, byName, amount, settled, t }) {
+  return (
+    <span style={{ fontSize: '0.62rem', color: '#7dcca0', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+      {icon} {label}: {byName}
+      {amount != null && (
+        <span style={{ color: settled ? 'var(--salt-faint)' : 'var(--gold)', fontWeight: 600 }}>
+          · €{amount.toFixed(2)} {settled ? `(${t.settled})` : `(${t.earned})`}
+        </span>
+      )}
+    </span>
   )
 }
