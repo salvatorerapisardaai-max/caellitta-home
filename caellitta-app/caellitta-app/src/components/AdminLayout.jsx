@@ -3,13 +3,23 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { sb } from '../lib/supabase'
 
 const NAV = [
-  { to: '/',             label: 'Dashboard',    icon: GridIcon,  exact: true },
-  { to: '/prenotazioni', label: 'Prenotazioni', icon: CalIcon },
-  { to: '/spese',        label: 'Spese',        icon: EuroIcon },
-  { to: '/convenzioni',  label: 'Convenzioni',  icon: TagIcon },
-  { to: '/whatsapp',     label: 'WhatsApp',     icon: MsgIcon },
-  { to: '/team',         label: 'Team',         icon: TeamIcon },
+  { to: '/',              label: 'Dashboard',      icon: GridIcon,  exact: true },
+  { to: '/prenotazioni',  label: 'Prenotazioni',   icon: CalIcon },
+  { to: '/pulizie',       label: 'Pulizie',        icon: BroomIcon },
+  { to: '/checkin',       label: 'Check-in/out',   icon: KeyIcon },
+  { to: '/spese',         label: 'Spese',          icon: EuroIcon },
+  { to: '/convenzioni',   label: 'Convenzioni',    icon: TagIcon },
+  { to: '/whatsapp',      label: 'WhatsApp',       icon: MsgIcon },
+  { to: '/portale-ospiti',label: 'Portale ospiti', icon: ImageIcon },
+  { to: '/team',          label: 'Team',           icon: TeamIcon },
+  { to: '/adempimenti',   label: 'Adempimenti',    icon: ShieldIcon },
 ]
+
+const TITLES = {
+  '/': 'Dashboard', '/prenotazioni': 'Prenotazioni', '/pulizie': 'Pulizie', '/checkin': 'Check-in Check-out',
+  '/spese': 'Spese', '/convenzioni': 'Convenzioni', '/whatsapp': 'WhatsApp', '/portale-ospiti': 'Portale ospiti',
+  '/team': 'Team', '/adempimenti': 'Adempimenti',
+}
 
 export default function AdminLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -26,6 +36,12 @@ export default function AdminLayout() {
         .topbar-date { font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--salt-faint); }
         .page-content { padding: 1.5rem; }
         .drawer { display: none; }
+
+        /* Icone "configurabili": segnalano visivamente che una sezione/campo può essere personalizzato.
+           Usato in WhatsApp, Pulizie, Check-in e ovunque serva far notare una configurazione disponibile. */
+        @keyframes wiggle { 0%,100% { transform: rotate(0deg); } 25% { transform: rotate(-10deg); } 75% { transform: rotate(10deg); } }
+        .icon-configurable { display: inline-block; transition: transform .15s; cursor: help; }
+        .icon-configurable:hover { animation: wiggle .4s ease-in-out; }
 
         @media (max-width: 768px) {
           .sidebar { display: none; }
@@ -144,8 +160,7 @@ function SidebarContent({ onNav }) {
 
 function PageTitle() {
   const loc = useLocation()
-  const titles = { '/': 'Dashboard', '/prenotazioni': 'Prenotazioni', '/spese': 'Spese', '/convenzioni': 'Convenzioni', '/whatsapp': 'WhatsApp', '/team': 'Team' }
-  const t = titles[loc.pathname] || 'Caellitta'
+  const t = TITLES[loc.pathname] || 'Caellitta'
   const [first, ...rest] = t.split(' ')
   return (
     <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.15rem', fontWeight: 300 }}>
@@ -160,3 +175,7 @@ function EuroIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fil
 function TagIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5"/></svg> }
 function MsgIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> }
 function TeamIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> }
+function BroomIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 21l4-4"/><path d="M13.5 6.5L21 14l-3 3-7.5-7.5"/><path d="M6 15l4.5-4.5c1-1 1-2.5 0-3.5l-1-1c-1-1-2.5-1-3.5 0L2 10.5"/></svg> }
+function KeyIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.5 12.5L20 3"/><path d="M17 6l3 3"/><path d="M14 9l3 3"/></svg> }
+function ImageIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> }
+function ShieldIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg> }
