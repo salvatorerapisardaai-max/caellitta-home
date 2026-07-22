@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { sb } from '../../lib/supabase'
 import { useNavigate } from 'react-router-dom'
+import { useActiveProperty } from '../../lib/PropertyContext'
 
 export default function Dashboard() {
+  const { activePropertyId } = useActiveProperty()
   const [bookings, setBookings] = useState([])
   const [expenses, setExpenses] = useState([])
   const [blockedDates, setBlockedDates] = useState([])
@@ -13,36 +15,41 @@ export default function Dashboard() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    loadData()
-  }, [])
+    if (activePropertyId) loadData()
+  }, [activePropertyId])
 
   async function loadData() {
     const { data: bk } = await sb
       .from('bookings')
       .select('*, guests(nationality)')
+      .eq('property_id', activePropertyId)
       .neq('status', 'cancelled')
       .order('check_in')
 
     const { data: ex } = await sb
       .from('expenses')
       .select('*')
+      .eq('property_id', activePropertyId)
       .order('date', { ascending: false })
 
     const { data: bd } = await sb
       .from('blocked_dates')
       .select('*')
+      .eq('property_id', activePropertyId)
       .order('date')
 
     // Commissioni dovute DAL PARTNER A NOI per le esperienze Convenzioni — contabilità
     // separata e opposta rispetto a quella dei collaboratori (bookings.commission_due,
-    // che invece è quanto dobbiamo NOI a loro)
+    // che invece è quanto dobbiamo NOI a loro). Filtrata per struttura tramite le prenotazioni.
     const { data: gc } = await sb
       .from('guest_coupons')
-      .select('commission, commission_settled')
+      .select('commission, commission_settled, bookings!inner(property_id)')
+      .eq('bookings.property_id', activePropertyId)
 
     const { data: wt } = await sb
       .from('whatsapp_templates')
       .select('id, lang, name, trigger_event, trigger_offset_days')
+      .eq('property_id', activePropertyId)
       .eq('active', true)
 
     setBookings(bk || [])
