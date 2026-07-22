@@ -2,7 +2,15 @@ import React, { useEffect, useState } from 'react'
 import { sb } from '../../lib/supabase'
 import Modal from '../../components/Modal'
 
-const EMPTY = { email: '', name: '', default_commission_pct: 10, active: true }
+const EMPTY = { email: '', name: '', default_commission_pct: 10, active: true, compensation_type: 'percentage', default_rate: '' }
+
+const COMP_LABELS = {
+  percentage: '% importo prenotazione',
+  fixed: 'Fisso a intervento',
+  hourly: 'A ore',
+  per_room: 'A stanza/appartamento',
+}
+const COMP_UNIT_HINT = { hourly: '€/ora', per_room: '€/stanza', fixed: '€ fisso', percentage: '% importo' }
 
 function randomAccessCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(4))
@@ -82,7 +90,14 @@ export default function Team() {
   function openNew() { setForm(EMPTY); setEditing(null); setSaveError(''); setModal(true) }
 
   function openEdit(c) {
-    setForm({ email: c.email || '', name: c.name || '', default_commission_pct: c.default_commission_pct ?? 10, active: c.active ?? true })
+    setForm({
+      email: c.email || '',
+      name: c.name || '',
+      default_commission_pct: c.default_commission_pct ?? 10,
+      active: c.active ?? true,
+      compensation_type: c.compensation_type || 'percentage',
+      default_rate: c.default_rate ?? '',
+    })
     setEditing(c.id)
     setSaveError('')
     setModal(true)
@@ -96,6 +111,8 @@ export default function Team() {
       name: form.name || null,
       default_commission_pct: Number(form.default_commission_pct) || 0,
       active: form.active,
+      compensation_type: form.compensation_type || 'percentage',
+      default_rate: form.default_rate === '' ? null : Number(form.default_rate),
     }
     try {
       if (editing) {
@@ -120,9 +137,6 @@ export default function Team() {
     load()
   }
 
-  // Eliminazione definitiva: consentita solo se il collaboratore non ha nessun legame
-  // storico (prenotazioni assegnate, check-in/out/pulizie fatti da lui). In caso contrario
-  // si blocca e si suggerisce "Sospendi", per non rompere lo storico delle prenotazioni.
   async function deleteCollaborator(c) {
     const { count, error } = await sb.from('bookings')
       .select('id', { count: 'exact', head: true })
@@ -175,7 +189,6 @@ export default function Team() {
         <button className="btn-primary" onClick={openNew}>+ Nuovo collaboratore</button>
       </div>
 
-      {/* COLLABORATORI */}
       <div className="sec-hdr"><span className="sec-title">Collaboratori</span></div>
       {collaborators.length === 0 && !loadError && (
         <div className="card" style={{ textAlign: 'center', color: 'var(--salt-faint)', padding: '2rem', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
@@ -198,9 +211,12 @@ export default function Team() {
               <button className="btn-sm" onClick={() => regenerateCode(c)}>Rigenera</button>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.2rem 0.55rem', border: '1px solid var(--gold-dim)', color: 'var(--gold)' }}>
               Commissione {c.default_commission_pct}%
+            </span>
+            <span style={{ fontSize: '0.62rem', letterSpacing: '0.05em', padding: '0.2rem 0.55rem', border: '1px solid rgba(201,171,114,.2)', color: 'var(--salt-faint)' }}>
+              Compensi task: {COMP_LABELS[c.compensation_type] || COMP_LABELS.percentage}{c.default_rate != null ? ` · ${c.default_rate}${c.compensation_type === 'percentage' ? '%' : '€'}` : ''}
             </span>
             <span className={`badge ${c.active ? 'badge-green' : 'badge-gray'}`}>{c.active ? 'Attivo' : 'Sospeso'}</span>
             <button className="btn-sm" onClick={() => openEdit(c)}>✏</button>
@@ -210,7 +226,6 @@ export default function Team() {
         </div>
       ))}
 
-      {/* PRENOTAZIONI DEI COLLABORATORI */}
       <div className="sec-hdr" style={{ marginTop: '2rem' }}><span className="sec-title">Prenotazioni dei collaboratori</span></div>
       {bookings.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', color: 'var(--salt-faint)', padding: '2rem', fontSize: '0.85rem' }}>
@@ -236,7 +251,6 @@ export default function Team() {
         </div>
       ))}
 
-      {/* SINCRONIZZAZIONE CALENDARI — anti-overbooking Airbnb/Booking.com, gratuita via iCal */}
       <div className="card" style={{ marginTop: '2rem' }}>
         <div className="sec-hdr">
           <span className="sec-title">Sincronizzazione calendari</span>
@@ -272,7 +286,6 @@ export default function Team() {
         ))}
       </div>
 
-      {/* MODAL */}
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Modifica collaboratore' : 'Nuovo collaboratore'}>
         {saveError && (
           <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#e08080' }}>
@@ -293,9 +306,33 @@ export default function Team() {
           </p>
         )}
         <div className="form-group">
-          <label className="form-label">Commissione (%)</label>
+          <label className="form-label">Commissione da referral (%)</label>
           <input className="form-input" type="number" step="0.5" value={form.default_commission_pct} onChange={e => setForm(p => ({ ...p, default_commission_pct: e.target.value }))} placeholder="10" />
+          <p style={{ fontSize: '0.68rem', color: 'var(--salt-faint)', marginTop: '0.3rem' }}>
+            Applicata quando il collaboratore porta lui stesso una prenotazione (non per check-in/out/pulizie).
+          </p>
         </div>
+
+        <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)', margin: '1rem 0 0.5rem' }}>
+          Compenso predefinito per Check-in / Check-out / Pulizie
+        </div>
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-label">Tipo compenso</label>
+            <select className="form-select" value={form.compensation_type} onChange={e => setForm(p => ({ ...p, compensation_type: e.target.value }))}>
+              {Object.entries(COMP_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Tariffa ({COMP_UNIT_HINT[form.compensation_type]})</label>
+            <input className="form-input" type="number" step="0.01" value={form.default_rate}
+              onChange={e => setForm(p => ({ ...p, default_rate: e.target.value }))} placeholder="0" />
+          </div>
+        </div>
+        <p style={{ fontSize: '0.68rem', color: 'var(--salt-faint)', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+          Usata come suggerimento quando assegni un compito da Pulizie o Check-in/out — resta comunque modificabile per ogni singola prenotazione.
+        </p>
+
         <div className="form-group">
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
             <input type="checkbox" checked={form.active} onChange={e => setForm(p => ({ ...p, active: e.target.checked }))} style={{ accentColor: 'var(--gold)' }} />
