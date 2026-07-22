@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { sb } from '../../lib/supabase'
 import Modal from '../../components/Modal'
+import { useActiveProperty } from '../../lib/PropertyContext'
 
 const EMPTY = { email: '', name: '', default_commission_pct: 10, active: true, compensation_type: 'percentage', default_rate: '' }
 
@@ -20,6 +21,7 @@ const EXPORT_URL = 'https://ejjatrfeeatgiqpomibd.supabase.co/functions/v1/ical-e
 const PLATFORM_LABELS = { airbnb: 'Airbnb', booking: 'Booking.com' }
 
 export default function Team() {
+  const { activePropertyId, activeProperty } = useActiveProperty()
   const [collaborators, setCollaborators] = useState([])
   const [bookings, setBookings] = useState([])
   const [feeds, setFeeds] = useState([])
@@ -34,21 +36,22 @@ export default function Team() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { if (activePropertyId) load() }, [activePropertyId])
 
   async function load() {
     setLoadError('')
     try {
-      const { data: c, error: e1 } = await sb.from('collaborators').select('*').order('name')
+      const { data: c, error: e1 } = await sb.from('collaborators').select('*').eq('property_id', activePropertyId).order('name')
       if (e1) throw new Error('Collaboratori: ' + e1.message)
 
       const { data: b, error: e2 } = await sb.from('bookings')
         .select('id,code,guest_name,check_in,check_out,amount_total,commission_pct,commission_due,commission_settled,collaborator_id')
+        .eq('property_id', activePropertyId)
         .not('collaborator_id', 'is', null)
         .order('check_in', { ascending: false })
       if (e2) throw new Error('Prenotazioni: ' + e2.message)
 
-      const { data: f, error: e3 } = await sb.from('ical_feeds').select('*').order('platform')
+      const { data: f, error: e3 } = await sb.from('ical_feeds').select('*').eq('property_id', activePropertyId).order('platform')
       if (e3) throw new Error('Calendari: ' + e3.message)
 
       setCollaborators(c || [])
@@ -119,7 +122,7 @@ export default function Team() {
         const { error } = await sb.from('collaborators').update(payload).eq('id', editing)
         if (error) throw error
       } else {
-        const { error } = await sb.from('collaborators').insert({ ...payload, access_code: randomAccessCode() })
+        const { error } = await sb.from('collaborators').insert({ ...payload, property_id: activePropertyId, access_code: randomAccessCode() })
         if (error) throw error
       }
       await load()
