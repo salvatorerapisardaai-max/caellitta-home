@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { sb } from '../lib/supabase'
+import { useActiveProperty } from '../lib/PropertyContext'
 
 const NAV = [
   { to: '/',              label: 'Dashboard',      icon: GridIcon,  exact: true },
@@ -96,6 +97,8 @@ export default function AdminLayout() {
 }
 
 function SidebarContent({ onNav }) {
+  const { properties, activePropertyId, setActivePropertyId, loading } = useActiveProperty()
+
   const handleLogout = async () => {
     await sb.auth.signOut()
   }
@@ -103,8 +106,29 @@ function SidebarContent({ onNav }) {
   return (
     <>
       <div style={{ padding: '1.8rem 1.5rem 1.2rem', borderBottom: '1px solid var(--gold-dim)' }}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)' }}>Caellitta</div>
+        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)' }}>Ospita</div>
         <div style={{ fontSize: '0.55rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--salt-faint)', marginTop: '0.2rem' }}>Gestionale</div>
+      </div>
+
+      {/* SELETTORE STRUTTURA — visibile sempre; se ce n'è una sola, mostra solo il nome */}
+      <div style={{ padding: '1rem 1.4rem', borderBottom: '1px solid var(--gold-dim)' }}>
+        <div style={{ fontSize: '0.55rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--salt-faint)', marginBottom: '0.4rem' }}>Struttura attiva</div>
+        {loading ? (
+          <div style={{ fontSize: '0.8rem', color: 'var(--salt-faint)' }}>Caricamento…</div>
+        ) : properties.length <= 1 ? (
+          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem', color: 'var(--gold)' }}>
+            {properties[0]?.name || '—'}
+          </div>
+        ) : (
+          <select
+            className="form-select"
+            style={{ width: '100%', fontSize: '0.85rem' }}
+            value={activePropertyId || ''}
+            onChange={e => setActivePropertyId(e.target.value)}
+          >
+            {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        )}
       </div>
 
       <nav style={{ flex: 1, padding: '1.2rem 0' }}>
