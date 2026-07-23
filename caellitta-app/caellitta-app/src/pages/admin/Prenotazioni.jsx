@@ -407,7 +407,7 @@ export default function Prenotazioni() {
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem' }}>
                 {b.guest_name}
                 {b.notes && b.notes.includes('Importata automaticamente da iCal') && (
-                  <span style={{ marginLeft: '0.6rem', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a6a1f', border: '1px solid rgba(224,168,98,.4)', padding: '0.15rem 0.45rem', verticalAlign: 'middle' }}>
+                  <span style={{ marginLeft: '0.6rem', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--amber)', border: '1px solid rgba(224,168,98,.4)', padding: '0.15rem 0.45rem', verticalAlign: 'middle' }}>
                     dati da completare
                   </span>
                 )}
@@ -469,7 +469,7 @@ export default function Prenotazioni() {
           </div>
         </div>
         {blockError && (
-          <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.6rem 0.9rem', marginBottom: '1rem', fontSize: '0.75rem', color: '#963832' }}>
+          <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.6rem 0.9rem', marginBottom: '1rem', fontSize: '0.75rem', color: 'var(--red)' }}>
             {blockError}
           </div>
         )}
@@ -529,7 +529,7 @@ export default function Prenotazioni() {
       {/* MODAL */}
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Modifica' : 'Nuova prenotazione'}>
         {saveError && (
-          <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#963832', lineHeight: 1.6 }}>
+          <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: 'var(--red)', lineHeight: 1.6 }}>
             {saveError}
           </div>
         )}
