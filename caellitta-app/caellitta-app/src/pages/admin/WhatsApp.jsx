@@ -35,7 +35,7 @@ function formatWhatsapp(text) {
 
 export default function WhatsApp() {
   const [searchParams] = useSearchParams()
-  const { activePropertyId } = useActiveProperty()
+  const { activePropertyId, activeProperty } = useActiveProperty()
   const [templates, setTemplates] = useState([])
   const [lang, setLang] = useState('it')
   const [activeId, setActiveId] = useState(null)
@@ -316,7 +316,7 @@ export default function WhatsApp() {
           <div style={{ background: '#1f2c1f', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(37,211,102,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem' }}>🏠</div>
             <div>
-              <div style={{ fontSize: '0.7rem', color: 'rgba(240,235,225,.7)' }}>Caellitta Home</div>
+              <div style={{ fontSize: '0.7rem', color: 'rgba(240,235,225,.7)' }}>{activeProperty?.name || 'La tua struttura'}</div>
               <div style={{ fontSize: '0.55rem', color: 'rgba(37,211,102,.6)' }}>in linea</div>
             </div>
           </div>
