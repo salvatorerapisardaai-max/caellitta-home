@@ -66,6 +66,7 @@ export default function Prenotazioni() {
   const [newBlockReason, setNewBlockReason] = useState('')
   const [blockError, setBlockError] = useState('')
   const [collaborators, setCollaborators] = useState([])
+  const [otherGuests, setOtherGuests] = useState([])
 
   useEffect(() => {
     if (activePropertyId) { load(); loadBlocked(); loadCollaborators() }
@@ -116,7 +117,7 @@ export default function Prenotazioni() {
     loadBlocked()
   }
 
-  function openNew() { setForm(EMPTY); setEditing(null); setEditingOriginal(null); setSaveError(''); setModal(true) }
+  function openNew() { setForm(EMPTY); setEditing(null); setEditingOriginal(null); setOtherGuests([]); setSaveError(''); setModal(true) }
 
   async function openEdit(b) {
     setForm({
@@ -142,6 +143,15 @@ export default function Prenotazioni() {
     setSaveError('')
     setModal(true)
 
+    const { data: og } = await sb.from('booking_guests').select('*').eq('booking_id', b.id).order('created_at')
+    setOtherGuests((og || []).map(g => ({
+      _key: g.id, role_code: g.role_code || '19',
+      first_name: g.first_name || '', last_name: g.last_name || '',
+      gender: g.gender || '', birth_date: g.birth_date || '', birth_place: g.birth_place || '',
+      birth_country: g.birth_country || '', citizenship: g.citizenship || '',
+      document_type: g.document_type || '', document_number: g.document_number || '',
+    })))
+
     if (b.guest_id) {
       const { data: guest } = await sb.from('guests')
         .select('birth_date,birth_place,gender,document_type,document_number,nationality')
@@ -165,10 +175,46 @@ export default function Prenotazioni() {
     load()
   }
 
+  function addOtherGuest() {
+    setOtherGuests(prev => [...prev, {
+      _key: 'new-' + Date.now() + Math.random(), role_code: '19',
+      first_name: '', last_name: '', gender: '', birth_date: '', birth_place: '',
+      birth_country: '', citizenship: '', document_type: '', document_number: '',
+    }])
+  }
+  function updateOtherGuest(key, field, value) {
+    setOtherGuests(prev => prev.map(g => g._key === key ? { ...g, [field]: value } : g))
+  }
+  function removeOtherGuest(key) {
+    setOtherGuests(prev => prev.filter(g => g._key !== key))
+  }
+
   async function hardDeleteBooking(id) {
     if (!confirm('Eliminare definitivamente?')) return
     await sb.from('bookings').delete().eq('id', id)
     load()
+  }
+
+  // Sostituisce tutti gli ospiti aggiuntivi di una prenotazione con quelli attuali nel form.
+  // Cancella e re-inserisce: semplice e sicuro per il volume tipico (pochi ospiti a prenotazione).
+  async function syncOtherGuests(bookingId) {
+    await sb.from('booking_guests').delete().eq('booking_id', bookingId)
+    const rows = otherGuests
+      .filter(g => g.first_name.trim() || g.last_name.trim())
+      .map(g => ({
+        booking_id: bookingId,
+        role_code: g.role_code,
+        first_name: g.first_name || null,
+        last_name: g.last_name || null,
+        gender: g.gender || null,
+        birth_date: g.birth_date || null,
+        birth_place: g.birth_place || null,
+        birth_country: g.birth_country || null,
+        citizenship: g.citizenship || null,
+        document_type: g.document_type || null,
+        document_number: g.document_number || null,
+      }))
+    if (rows.length > 0) await sb.from('booking_guests').insert(rows)
   }
 
   // Accoda gli invii ISTAT Sicilia (arrivo + partenza) per una prenotazione confermata/completata.
@@ -228,6 +274,7 @@ export default function Prenotazioni() {
         if (editingOriginal?.guest_id) {
           await sb.from('guests').update(guestDocPayload).eq('id', editingOriginal.guest_id)
         }
+        await syncOtherGuests(editing)
         await enqueueIstatIfNeeded(editing, payload.status)
       } else {
         // Riusa l'ospite esistente (stessa email) invece di duplicarlo in "guests"
@@ -249,7 +296,10 @@ export default function Prenotazioni() {
         const { data: newBooking, error: bErr } = await sb.from('bookings')
           .insert({ ...payload, guest_id: guestId, property_id: activePropertyId }).select('id').single()
         if (bErr) throw bErr
-        if (newBooking?.id) await enqueueIstatIfNeeded(newBooking.id, payload.status)
+        if (newBooking?.id) {
+          await syncOtherGuests(newBooking.id)
+          await enqueueIstatIfNeeded(newBooking.id, payload.status)
+        }
       }
       await load()
       setModal(false)
@@ -346,7 +396,7 @@ export default function Prenotazioni() {
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem' }}>
                 {b.guest_name}
                 {b.notes && b.notes.includes('Importata automaticamente da iCal') && (
-                  <span style={{ marginLeft: '0.6rem', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#e0a862', border: '1px solid rgba(224,168,98,.4)', padding: '0.15rem 0.45rem', verticalAlign: 'middle' }}>
+                  <span style={{ marginLeft: '0.6rem', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a6a1f', border: '1px solid rgba(224,168,98,.4)', padding: '0.15rem 0.45rem', verticalAlign: 'middle' }}>
                     dati da completare
                   </span>
                 )}
@@ -405,7 +455,7 @@ export default function Prenotazioni() {
           </div>
         </div>
         {blockError && (
-          <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.6rem 0.9rem', marginBottom: '1rem', fontSize: '0.75rem', color: '#e08080' }}>
+          <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.6rem 0.9rem', marginBottom: '1rem', fontSize: '0.75rem', color: '#963832' }}>
             {blockError}
           </div>
         )}
@@ -465,7 +515,7 @@ export default function Prenotazioni() {
       {/* MODAL */}
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Modifica' : 'Nuova prenotazione'}>
         {saveError && (
-          <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#e08080', lineHeight: 1.6 }}>
+          <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#963832', lineHeight: 1.6 }}>
             {saveError}
           </div>
         )}
@@ -583,6 +633,48 @@ export default function Prenotazioni() {
           <label className="form-label">Note</label>
           <textarea className="form-textarea" value={f.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
         </div>
+
+        {/* ALTRI OSPITI — famiglia/gruppo, per Alloggiati Web quando sono più di uno */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '1.2rem 0 0.5rem' }}>
+          <span style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>
+            Altri ospiti (famiglia/gruppo) — {otherGuests.length}
+          </span>
+          <button type="button" className="btn-sm" onClick={addOtherGuest}>+ Aggiungi ospite</button>
+        </div>
+        {otherGuests.length === 0 && (
+          <p style={{ fontSize: '0.7rem', color: 'var(--salt-faint)', marginBottom: '0.5rem' }}>
+            Solo il capofamiglia. Aggiungi qui gli altri componenti del gruppo, se presenti.
+          </p>
+        )}
+        {otherGuests.map((g, idx) => (
+          <div key={g._key} style={{ background: 'var(--lava-hover)', border: '1px solid var(--gold-dim2)', padding: '0.9rem 1rem', marginBottom: '0.6rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+              <span style={{ fontSize: '0.65rem', color: 'var(--gold)' }}>Ospite {idx + 2}</span>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <select className="form-select" style={{ width: 150, padding: '0.3rem 0.5rem', fontSize: '0.7rem' }}
+                  value={g.role_code} onChange={e => updateOtherGuest(g._key, 'role_code', e.target.value)}>
+                  <option value="19">Familiare</option>
+                  <option value="20">Membro gruppo</option>
+                </select>
+                <button type="button" className="btn-sm danger" onClick={() => removeOtherGuest(g._key)}>✕</button>
+              </div>
+            </div>
+            <div className="form-grid">
+              <input className="form-input" placeholder="Nome" value={g.first_name} onChange={e => updateOtherGuest(g._key, 'first_name', e.target.value)} />
+              <input className="form-input" placeholder="Cognome" value={g.last_name} onChange={e => updateOtherGuest(g._key, 'last_name', e.target.value)} />
+              <input className="form-input" type="date" value={g.birth_date} onChange={e => updateOtherGuest(g._key, 'birth_date', e.target.value)} />
+              <input className="form-input" placeholder="Luogo di nascita" value={g.birth_place} onChange={e => updateOtherGuest(g._key, 'birth_place', e.target.value)} />
+              <select className="form-select" value={g.gender} onChange={e => updateOtherGuest(g._key, 'gender', e.target.value)}>
+                <option value="">— Sesso —</option>
+                <option value="M">M</option>
+                <option value="F">F</option>
+              </select>
+              <input className="form-input" placeholder="Nazionalità" value={g.citizenship} onChange={e => updateOtherGuest(g._key, 'citizenship', e.target.value)} />
+              <input className="form-input" placeholder="Tipo documento" value={g.document_type} onChange={e => updateOtherGuest(g._key, 'document_type', e.target.value)} />
+              <input className="form-input" placeholder="Numero documento" value={g.document_number} onChange={e => updateOtherGuest(g._key, 'document_number', e.target.value)} />
+            </div>
+          </div>
+        ))}
         <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1.5rem' }}>
           <button className="btn-primary" onClick={save} style={{ flex: 1 }} disabled={saving}>
             {saving ? 'Salvataggio…' : 'Salva'}
