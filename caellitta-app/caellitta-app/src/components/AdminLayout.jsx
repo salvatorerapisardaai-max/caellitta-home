@@ -184,7 +184,7 @@ function SidebarContent({ onNav }) {
 
 function PageTitle() {
   const loc = useLocation()
-  const t = TITLES[loc.pathname] || 'Caellitta'
+  const t = TITLES[loc.pathname] || 'Ospita'
   const [first, ...rest] = t.split(' ')
   return (
     <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.15rem', fontWeight: 300 }}>
