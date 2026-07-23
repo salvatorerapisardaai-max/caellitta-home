@@ -39,7 +39,7 @@ export default function AdminLayout() {
         .admin-wrap { display: flex; height: 100vh; overflow: hidden; }
         .sidebar { width: var(--sidebar); flex-shrink: 0; background: var(--lava-mid); border-right: 1px solid var(--gold-dim); display: flex; flex-direction: column; height: 100vh; overflow-y: auto; }
         .main-area { flex: 1; height: 100vh; overflow-y: auto; overflow-x: hidden; min-width: 0; }
-        .topbar { position: sticky; top: 0; z-index: 100; background: rgba(250,245,234,0.92); backdrop-filter: blur(16px); border-bottom: 1px solid var(--gold-dim2); display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; }
+        .topbar { position: sticky; top: 0; z-index: 100; background: var(--lava); backdrop-filter: blur(16px); border-bottom: 1px solid var(--gold-dim2); display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; }
         .hamburger { display: none; background: none; border: 1px solid var(--gold-dim); color: var(--gold); width: 34px; height: 34px; cursor: pointer; font-size: 1rem; align-items: center; justify-content: center; flex-shrink: 0; }
         .topbar-date { font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--salt-faint); }
         .page-content { padding: 1.5rem; }
@@ -156,12 +156,18 @@ function SidebarContent({ onNav }) {
           </div>
         ) : (
           <select
-            className="form-select"
-            style={{ width: '100%', fontSize: '0.85rem' }}
             value={activePropertyId || ''}
             onChange={e => setActivePropertyId(e.target.value)}
+            style={{
+              width: '100%', fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem',
+              color: 'var(--gold)', background: 'var(--lava)', border: '1px solid var(--gold-dim2)',
+              borderRadius: 3, padding: '0.6rem 2.2rem 0.6rem 0.9rem', cursor: 'pointer',
+              appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
+              backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239c7a3c' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")",
+              backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.7rem center', backgroundSize: '16px',
+            }}
           >
-            {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {properties.map(p => <option key={p.id} value={p.id} style={{ fontFamily: 'Jost, sans-serif', color: '#171310' }}>{p.name}</option>)}
           </select>
         )}
         {!loading && properties.length < 5 && (
@@ -242,13 +248,13 @@ function SidebarContent({ onNav }) {
           style={{
             width: '100%', padding: '0.55rem 1rem',
             background: 'none', border: '1px solid rgba(201,171,114,0.2)',
-            color: 'rgba(240,235,225,0.4)', fontSize: '0.62rem',
+            color: 'var(--salt-faint)', fontSize: '0.62rem',
             letterSpacing: '0.2em', textTransform: 'uppercase',
             cursor: 'pointer', fontFamily: "'Jost', sans-serif",
             transition: 'border-color 0.3s, color 0.3s',
           }}
           onMouseOver={e => { e.currentTarget.style.borderColor = 'rgba(201,171,114,0.5)'; e.currentTarget.style.color = 'var(--gold)' }}
-          onMouseOut={e => { e.currentTarget.style.borderColor = 'rgba(201,171,114,0.2)'; e.currentTarget.style.color = 'rgba(240,235,225,0.4)' }}
+          onMouseOut={e => { e.currentTarget.style.borderColor = 'rgba(201,171,114,0.2)'; e.currentTarget.style.color = 'var(--salt-faint)' }}
         >
           Esci
         </button>
