@@ -210,13 +210,13 @@ export default function Dashboard() {
     checkin: {
       bg: 'rgba(74,138,104,.2)',
       border: '2px solid var(--green)',
-      color: '#2f6b46',
+      color: 'var(--green)',
     },
 
     checkout: {
       bg: 'rgba(138,72,72,.12)',
       border: '2px solid rgba(138,72,72,.5)',
-      color: '#963832',
+      color: 'var(--red)',
     },
 
     booked: {
@@ -240,7 +240,7 @@ export default function Dashboard() {
     blocked: {
       bg: 'rgba(120,120,120,.18)',
       border: '1px solid rgba(120,120,120,.4)',
-      color: 'rgba(240,235,225,.4)',
+      color: 'var(--salt-faint)',
     },
   }
 
@@ -351,21 +351,21 @@ export default function Dashboard() {
         <div className="totali-grid">
           <div className="totali-item">
             <div className="totali-label">Entrate totali</div>
-            <div className="totali-value" style={{ color: '#2f6b46' }}>€{totalRevenueAllTime.toLocaleString('it')}</div>
+            <div className="totali-value" style={{ color: 'var(--green)' }}>€{totalRevenueAllTime.toLocaleString('it')}</div>
           </div>
           <div className="totali-item">
             <div className="totali-label">Spese totali</div>
-            <div className="totali-value" style={{ color: '#963832' }}>−€{totalExpensesAllTime.toLocaleString('it')}</div>
+            <div className="totali-value" style={{ color: 'var(--red)' }}>−€{totalExpensesAllTime.toLocaleString('it')}</div>
           </div>
           <div className="totali-item">
             <div className="totali-label">Margine netto</div>
-            <div className="totali-value" style={{ color: totalMarginAllTime >= 0 ? 'var(--gold)' : '#963832' }}>
+            <div className="totali-value" style={{ color: totalMarginAllTime >= 0 ? 'var(--gold)' : 'var(--red)' }}>
               €{totalMarginAllTime.toLocaleString('it')}
             </div>
           </div>
           <div className="totali-item">
             <div className="totali-label">Compensi operativi da liquidare</div>
-            <div className="totali-value" style={{ color: operationalToSettle > 0 ? '#8a6a1f' : '#2f6b46' }}>
+            <div className="totali-value" style={{ color: operationalToSettle > 0 ? 'var(--amber)' : 'var(--green)' }}>
               €{operationalToSettle.toFixed(2)}
             </div>
             <div style={{ fontSize: '0.6rem', color: 'var(--salt-faint)', marginTop: '0.2rem' }}>
@@ -523,8 +523,8 @@ export default function Dashboard() {
             }}
           >
             {[
-              ['#2f6b46', 'Check-in'],
-              ['#963832', 'Check-out'],
+              ['var(--green)', 'Check-in'],
+              ['var(--red)', 'Check-out'],
               ['var(--gold-light)', 'Occupato'],
               ['rgba(120,120,120,.5)', 'Bloccato'],
             ].map(([c, l]) => (
@@ -710,7 +710,7 @@ export default function Dashboard() {
                 style={{
                   fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase',
                   padding: '0.2rem 0.55rem', border: '1px solid var(--gold-dim)',
-                  color: b.check_out === todayIso ? '#963832' : 'var(--salt-faint)', flexShrink: 0,
+                  color: b.check_out === todayIso ? 'var(--red)' : 'var(--salt-faint)', flexShrink: 0,
                 }}
               >
                 {b.check_out === todayIso ? 'Oggi' : `tra ${daysBetween(todayIso, b.check_out)}g`}
@@ -785,7 +785,7 @@ export default function Dashboard() {
               style={{
                 fontFamily: "'Cormorant Garamond', serif",
                 fontSize: '1.05rem',
-                color: '#963832',
+                color: 'var(--red)',
               }}
             >
               −€{e.amount?.toFixed(2)}
@@ -912,9 +912,9 @@ function KPI({
 }) {
   const colors = {
     gold: 'var(--gold)',
-    green: '#2f6b46',
-    red: '#963832',
-    blue: '#2f7a94',
+    green: 'var(--green)',
+    red: 'var(--red)',
+    blue: 'var(--sea-light)',
   }
 
   const accents = {
