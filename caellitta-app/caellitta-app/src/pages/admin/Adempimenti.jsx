@@ -156,7 +156,7 @@ export default function Adempimenti() {
                     <td style={{ padding: '0.5rem 0.7rem' }}>{r.movement_type === 'arrival' ? 'Arrivo' : r.movement_type === 'departure' ? 'Partenza' : 'Presenza'}</td>
                     <td style={{ padding: '0.5rem 0.7rem' }}><Badge status={r.status} /></td>
                     <td style={{ padding: '0.5rem 0.7rem' }}>{r.attempts}</td>
-                    <td style={{ padding: '0.5rem 0.7rem', color: '#e08080' }}>{r.last_error ? r.last_error.slice(0, 80) : '—'}</td>
+                    <td style={{ padding: '0.5rem 0.7rem', color: '#963832' }}>{r.last_error ? r.last_error.slice(0, 80) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -193,7 +193,7 @@ export default function Adempimenti() {
                       <td style={{ padding: '0.5rem 0.7rem' }}>{r.bookings?.guest_name || '—'}</td>
                       <td style={{ padding: '0.5rem 0.7rem' }}>{r.bookings?.check_in || '—'}</td>
                       <td style={{ padding: '0.5rem 0.7rem' }}><Badge status={r.status} /></td>
-                      <td style={{ padding: '0.5rem 0.7rem', color: close ? '#e08080' : 'inherit', fontWeight: close ? 700 : 400 }}>
+                      <td style={{ padding: '0.5rem 0.7rem', color: close ? '#963832' : 'inherit', fontWeight: close ? 700 : 400 }}>
                         {r.deadline_at ? new Date(r.deadline_at).toLocaleString('it-IT') : '—'}
                       </td>
                       <td style={{ padding: '0.5rem 0.7rem' }}>{r.attempts}</td>
