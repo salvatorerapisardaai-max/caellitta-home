@@ -103,9 +103,9 @@ export default function Pulizie() {
 
       <div className="pulizie-kpi">
         <MiniKpi label="Da fare" value={daFare.length} color="var(--gold)" />
-        <MiniKpi label="Fatte da liquidare" value={daLiquidare.length} color="#e0a862" />
-        <MiniKpi label="Totale da liquidare" value={`€${totaleDaLiquidare.toFixed(2)}`} color="#e08080" />
-        <MiniKpi label="Liquidato questo mese" value={`€${totaleLiquidatoMese.toFixed(2)}`} color="#7dcca0" />
+        <MiniKpi label="Fatte da liquidare" value={daLiquidare.length} color="#8a6a1f" />
+        <MiniKpi label="Totale da liquidare" value={`€${totaleDaLiquidare.toFixed(2)}`} color="#963832" />
+        <MiniKpi label="Liquidato questo mese" value={`€${totaleLiquidatoMese.toFixed(2)}`} color="#2f6b46" />
       </div>
 
       <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1rem' }}>
@@ -129,7 +129,7 @@ export default function Pulizie() {
             <div>
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem' }}>{b.guest_name}</div>
               <div style={{ fontSize: '.68rem', color: 'var(--salt-faint)' }}>
-                Check-out: {fmtDate(b.check_out)} {b.check_out === todayIso && <strong style={{ color: '#e08080' }}> · OGGI</strong>}
+                Check-out: {fmtDate(b.check_out)} {b.check_out === todayIso && <strong style={{ color: '#963832' }}> · OGGI</strong>}
               </div>
             </div>
             {b.cleaning_settled && <span className="badge badge-green">Liquidata</span>}
