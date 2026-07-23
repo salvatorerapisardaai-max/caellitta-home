@@ -25,6 +25,10 @@ export default function Team() {
   const [collaborators, setCollaborators] = useState([])
   const [bookings, setBookings] = useState([])
   const [feeds, setFeeds] = useState([])
+  const [units, setUnits] = useState([])
+  const [newUnitName, setNewUnitName] = useState('')
+  const [newUnitCapacity, setNewUnitCapacity] = useState('')
+  const [savingUnit, setSavingUnit] = useState(false)
   const [feedUrls, setFeedUrls] = useState({})
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState('')
@@ -54,9 +58,13 @@ export default function Team() {
       const { data: f, error: e3 } = await sb.from('ical_feeds').select('*').eq('property_id', activePropertyId).order('platform')
       if (e3) throw new Error('Calendari: ' + e3.message)
 
+      const { data: u, error: e4 } = await sb.from('property_units').select('*').eq('property_id', activePropertyId).order('sort_order')
+      if (e4) throw new Error('Camere: ' + e4.message)
+
       setCollaborators(c || [])
       setBookings(b || [])
       setFeeds(f || [])
+      setUnits(u || [])
       setFeedUrls(Object.fromEntries((f || []).map(x => [x.id, x.import_url || ''])))
     } catch (err) {
       console.error(err)
@@ -88,6 +96,32 @@ export default function Team() {
     navigator.clipboard.writeText(EXPORT_URL)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function addUnit() {
+    if (!newUnitName.trim()) return
+    setSavingUnit(true)
+    const maxOrder = Math.max(0, ...units.map(u => u.sort_order || 0))
+    await sb.from('property_units').insert({
+      property_id: activePropertyId, name: newUnitName.trim(),
+      capacity: newUnitCapacity ? Number(newUnitCapacity) : null, sort_order: maxOrder + 1,
+    })
+    setNewUnitName(''); setNewUnitCapacity(''); setSavingUnit(false)
+    load()
+  }
+  async function toggleUnitActive(u) {
+    await sb.from('property_units').update({ active: !u.active }).eq('id', u.id)
+    load()
+  }
+  async function deleteUnit(u) {
+    const { count } = await sb.from('bookings').select('id', { count: 'exact', head: true }).eq('unit_id', u.id)
+    if ((count || 0) > 0) {
+      alert(`"${u.name}" è collegata a ${count} prenotazioni. Per non perdere lo storico, usa "Disattiva" invece di eliminare.`)
+      return
+    }
+    if (!confirm(`Eliminare definitivamente "${u.name}"?`)) return
+    await sb.from('property_units').delete().eq('id', u.id)
+    load()
   }
 
   function openNew() { setForm(EMPTY); setEditing(null); setSaveError(''); setModal(true) }
@@ -253,6 +287,42 @@ export default function Team() {
           </div>
         </div>
       ))}
+
+      {/* CAMERE / UNITÀ — per B&B e strutture con più stanze indipendenti.
+          Se non ne aggiungi nessuna, la struttura funziona come affitto
+          dell'intera casa (comportamento invariato, nessuna camera da scegliere). */}
+      <div className="card" style={{ marginTop: '2rem' }}>
+        <div className="sec-hdr"><span className="sec-title">Camere / Unità</span></div>
+        <p style={{ fontSize: '0.72rem', color: 'var(--salt-faint)', marginBottom: '1rem' }}>
+          Aggiungi camere solo se la struttura ha più unità indipendenti (B&B, più stanze). Se affitti l'intera casa, lascia vuoto.
+        </p>
+        {units.length === 0 ? (
+          <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)', marginBottom: '1rem' }}>Nessuna camera configurata — la struttura è gestita come unità unica.</p>
+        ) : units.map(u => (
+          <div key={u.id} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem',
+            background: 'var(--lava-card)', border: `1px solid ${u.active ? 'var(--gold-dim2)' : 'rgba(90,90,90,.2)'}`,
+            padding: '0.7rem 1rem', marginBottom: '0.4rem', opacity: u.active ? 1 : 0.55,
+          }}>
+            <div>
+              <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem' }}>{u.name}</span>
+              {u.capacity && <span style={{ fontSize: '0.7rem', color: 'var(--salt-faint)', marginLeft: '0.6rem' }}>· {u.capacity} ospiti max</span>}
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <span className={`badge ${u.active ? 'badge-green' : 'badge-gray'}`}>{u.active ? 'Attiva' : 'Disattivata'}</span>
+              <button className="btn-sm" onClick={() => toggleUnitActive(u)}>{u.active ? 'Disattiva' : 'Riattiva'}</button>
+              <button className="btn-sm danger" onClick={() => deleteUnit(u)}>🗑</button>
+            </div>
+          </div>
+        ))}
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.8rem' }}>
+          <input className="form-input" style={{ flex: 1, minWidth: 160 }} placeholder="Nome camera (es. Camera Matrimoniale)"
+            value={newUnitName} onChange={e => setNewUnitName(e.target.value)} />
+          <input className="form-input" style={{ width: 110 }} type="number" placeholder="Ospiti max"
+            value={newUnitCapacity} onChange={e => setNewUnitCapacity(e.target.value)} />
+          <button className="btn-primary" onClick={addUnit} disabled={savingUnit || !newUnitName.trim()}>+ Aggiungi</button>
+        </div>
+      </div>
 
       <div className="card" style={{ marginTop: '2rem' }}>
         <div className="sec-hdr">
