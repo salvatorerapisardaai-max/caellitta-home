@@ -47,7 +47,11 @@ function buildWbTheme(content) {
     '--lava': bg, '--lava-mid': shade(bg, 0.04), '--lava-card': card, '--lava-hover': shade(card, 0.04),
     '--gold': accent, '--gold-light': shade(accent, 0.15),
     '--gold-dim': `rgba(${accentRgb},0.12)`, '--gold-dim2': `rgba(${accentRgb},0.22)`,
-    '--salt': text, '--salt-dim': `rgba(${textRgb},0.58)`, '--salt-faint': `rgba(${textRgb},0.26)`,
+    '--salt': text, '--salt-dim': `rgba(${textRgb},0.72)`, '--salt-faint': `rgba(${textRgb},0.45)`,
+    // Gli hero hanno un gradiente scuro fisso (effetto "banner fotografico"), quindi il
+    // testo sopra deve restare chiaro anche quando l'host sceglie un tema chiaro —
+    // altrimenti diventa scuro su scuro e sparisce.
+    '--wb-hero-text': '#f5f0e6',
     '--green': '#4a8a68', '--green-dim': 'rgba(74,138,104,0.15)',
     '--red': '#8a4848', '--red-dim': 'rgba(138,72,72,0.15)',
   }
@@ -57,17 +61,19 @@ const WIFI_PASSWORD_DEFAULT = 'rJT9HdAP2F4Asp96'
 
 // Icone per categoria (coupon_categories.name)
 const CAT_ICONS = {
+  'Ristoranti':       '🍽️',
+  'Bar & Aperitivo':  '🍹',
+  'Esperienze':       '🌊',
+  'Servizi':          '🛎️',
+  'Shopping':         '🛍️',
   'Barca & Mare':     '⛵',
   'Etna & Avventura': '🌋',
   'Dal Cielo':        '🚁',
   'Sapori & Cantine': '🍷',
-  'Ristoranti':       '🍽️',
-  'Bar & Aperitivo':  '🍹',
-  'Servizi':          '🛎️',
-  'Esperienze':       '🌊',
 }
-// Ordine di presentazione delle categorie nel portale ospiti (allineato a coupon_categories)
-const CAT_ORDER = ['Barca & Mare', 'Etna & Avventura', 'Dal Cielo', 'Sapori & Cantine', 'Ristoranti', 'Bar & Aperitivo', 'Servizi', 'Esperienze']
+// Ordine di presentazione: prima le categorie note nell'ordine sotto, poi tutte le
+// altre (create liberamente dall'host) in ordine alfabetico.
+const CAT_ORDER = ['Esperienze', 'Barca & Mare', 'Etna & Avventura', 'Dal Cielo', 'Sapori & Cantine', 'Ristoranti', 'Bar & Aperitivo', 'Shopping', 'Servizi']
 
 // Un coupon è "usato" se lo dice lo status (allineato al gestionale) o se ha used_at
 const isCouponUsed = (c) => c?.status === 'used' || !!c?.used_at
@@ -227,7 +233,7 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang, content }) 
         />
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.96) 0%,rgba(19,16,14,.2) 100%)' }} />
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>{booking.property_name || (it ? 'La tua struttura' : 'Your stay')}</p>
-        <h1 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(2rem,9vw,2.8rem)', fontWeight: 300, lineHeight: 1.05 }}>
+        <h1 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(2rem,9vw,2.8rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
           {it ? <>Benvenuto<br/><em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>a casa tua.</em></> : <>Welcome<br/><em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>to your home.</em></>}
         </h1>
       </div>
@@ -323,7 +329,7 @@ function ChCasa({ lang, items }) {
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
           {it ? 'Info pratiche' : 'Practical info'}
         </p>
-        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05 }}>
+        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
           {it ? <>La <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>tua casa</em></> : <>Your <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>home</em></>}
         </h2>
       </div>
@@ -366,7 +372,7 @@ function ChDintorni({ lang, items }) {
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
           {it ? 'A due passi da qui' : 'Just steps away'}
         </p>
-        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05 }}>
+        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
           {it ? <>Nei <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>dintorni</em></> : <>What's <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>nearby</em></>}
         </h2>
       </div>
@@ -412,7 +418,7 @@ function ChRegole({ lang, items }) {
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
           {it ? 'Vivere bene insieme' : 'Living well together'}
         </p>
-        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05 }}>
+        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
           {it ? <>Regole della <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>casa</em></> : <>House <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>rules</em></>}
         </h2>
       </div>
@@ -442,7 +448,7 @@ function ChCustom({ lang, section }) {
     <div>
       <div style={{ minHeight: '45vw', maxHeight: 240, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#2a2418 0%,#13100e 100%)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
-        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05 }}>
+        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
           <span style={{ marginRight: '0.5rem' }}>{section.icon}</span>
           <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>{it ? section.label_it : section.label_en}</em>
         </h2>
@@ -497,7 +503,9 @@ function ChEsperienze({ lang, propertyId, propertyName, waNumber }) {
 
       const ordered = Object.values(groups).sort((a, b) => {
         const ia = CAT_ORDER.indexOf(a.name); const ib = CAT_ORDER.indexOf(b.name)
-        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+        const ra = ia === -1 ? 99 : ia; const rb = ib === -1 ? 99 : ib
+        // A parità (entrambe categorie personalizzate dell'host), ordine alfabetico
+        return ra !== rb ? ra - rb : a.name.localeCompare(b.name)
       })
       setCats(ordered)
       setLoading(false)
@@ -518,7 +526,7 @@ function ChEsperienze({ lang, propertyId, propertyName, waNumber }) {
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
           {it ? 'Avventure siciliane' : 'Sicilian adventures'}
         </p>
-        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05 }}>
+        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
           {it ? <>Esperienze da <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>vivere</em></> : <>Experiences to <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>live</em></>}
         </h2>
       </div>
@@ -583,7 +591,7 @@ function ChCoupon({ coupons, useCoupon, lang }) {
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
           {it ? 'Esclusivo per te' : 'Exclusive for you'}
         </p>
-        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05 }}>
+        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
           {it ? <>I tuoi <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>coupon</em></> : <>Your <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>coupons</em></>}
         </h2>
       </div>
@@ -673,7 +681,7 @@ function ChContatti({ lang, propertyName, items, emergencyItems }) {
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
           {it ? 'Siamo qui per te' : 'We are here for you'}
         </p>
-        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05 }}>
+        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
           {it ? <>Contatti & <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>emergenze</em></> : <>Contacts & <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>emergencies</em></>}
         </h2>
       </div>
