@@ -16,6 +16,7 @@ export default function CheckIn() {
   const { activePropertyId } = useActiveProperty()
   const [bookings, setBookings] = useState([])
   const [collaborators, setCollaborators] = useState([])
+  const [units, setUnits] = useState([])
   const [kind, setKind] = useState('checkin') // checkin | checkout
   const [tab, setTab] = useState('da_fare')
   const [savingId, setSavingId] = useState(null)
@@ -27,6 +28,8 @@ export default function CheckIn() {
     setBookings(bk || [])
     const { data: cs } = await sb.from('collaborators').select('id,name,email,active,compensation_type,default_rate').eq('property_id', activePropertyId).eq('active', true)
     setCollaborators(cs || [])
+    const { data: u } = await sb.from('property_units').select('id,name').eq('property_id', activePropertyId).eq('active', true)
+    setUnits(u || [])
   }
 
   async function updateBooking(id, patch) {
@@ -116,6 +119,7 @@ export default function CheckIn() {
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem' }}>{b.guest_name}</div>
               <div style={{ fontSize: '.68rem', color: 'var(--salt-faint)' }}>
                 {kind === 'checkin' ? 'Check-in' : 'Check-out'}: {fmtDate(b[byField.date])} {b[byField.date] === todayIso && <strong style={{ color: '#963832' }}> · OGGI</strong>}
+                {b.unit_id && units.find(u => u.id === b.unit_id) && <span style={{ color: 'var(--gold)' }}> · 🚪 {units.find(u => u.id === b.unit_id).name}</span>}
               </div>
             </div>
             {b[byField.settled] && <span className="badge badge-green">Liquidato</span>}
