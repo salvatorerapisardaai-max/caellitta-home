@@ -15,7 +15,7 @@ export default function GuestAccess() {
       label: 'Codice prenotazione',
       btn: 'Accedi al mio soggiorno →',
       loading: 'Caricamento…',
-      help: 'Non trovi il codice? Scrivi su WhatsApp — ti aiutiamo subito.',
+      help: 'Non trovi il codice? Scrivi al tuo host — ti aiuta subito.',
       error: "Codice non trovato. Controlla l'email di conferma.",
     },
     en: {
@@ -23,7 +23,7 @@ export default function GuestAccess() {
       label: 'Booking code',
       btn: 'Access my stay →',
       loading: 'Loading…',
-      help: "Can't find your code? Message us on WhatsApp — we'll help right away.",
+      help: "Can't find your code? Message your host — they'll help right away.",
       error: 'Code not found. Please check your confirmation email.',
     },
   }[lang]
@@ -47,10 +47,10 @@ export default function GuestAccess() {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: '2rem',
     }}>
-      {/* Noise */}
+      {/* Grana leggera */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
         backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-        opacity: 0.025 }} />
+        opacity: 0.018 }} />
 
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 420, textAlign: 'center' }}>
 
@@ -58,8 +58,8 @@ export default function GuestAccess() {
         <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
           {['it', 'en'].map(l => (
             <button key={l} onClick={() => setLang(l)} style={{
-              background: 'none', border: `1px solid ${lang === l ? 'rgba(201,171,114,0.5)' : 'rgba(201,171,114,0.15)'}`,
-              color: lang === l ? 'var(--gold)' : 'rgba(240,235,225,0.3)',
+              background: 'none', border: `1px solid ${lang === l ? 'var(--gold)' : 'rgba(156,122,60,0.25)'}`,
+              color: lang === l ? 'var(--gold)' : 'var(--salt-faint)',
               fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase',
               padding: '0.3rem 0.7rem', cursor: 'pointer', fontFamily: "'Jost', sans-serif",
               transition: 'all 0.2s',
@@ -70,36 +70,36 @@ export default function GuestAccess() {
         </div>
 
         <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.1rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
-          Caellitta Home
+          Ospita
         </div>
         <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(2rem,8vw,3rem)', fontWeight: 300, lineHeight: 1.1, marginBottom: '0.8rem' }}>
-          {lang === 'it' ? <>Benvenuto/<br/><em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>a</em></> : <>Welcome<br/><em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>to Caellitta</em></>}
+          {lang === 'it' ? <>Benvenuto/<br/><em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>a</em></> : <>Welcome<br/><em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>to your stay</em></>}
         </h1>
-        <p style={{ fontSize: '0.82rem', color: 'var(--salt-faint)', marginBottom: '2.5rem', lineHeight: 1.8, fontWeight: 300 }}>
+        <p style={{ fontSize: '0.82rem', color: 'var(--salt-dim)', marginBottom: '2.5rem', lineHeight: 1.8, fontWeight: 300 }}>
           {t.subtitle}
         </p>
 
-        <div style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '2rem' }}>
+        <div style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim2)', padding: '2rem', boxShadow: '0 4px 20px rgba(43,35,24,0.05)' }}>
           <label style={{ display: 'block', fontSize: '0.6rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.6rem', textAlign: 'left' }}>
             {t.label}
           </label>
           <input
             style={{
-              width: '100%', background: 'var(--lava-mid)', border: '1px solid rgba(201,171,114,.25)',
+              width: '100%', background: 'var(--lava)', border: '1px solid rgba(156,122,60,.3)',
               padding: '0.9rem 1rem', fontFamily: 'monospace', fontSize: '1rem',
               color: 'var(--salt)', outline: 'none', letterSpacing: '0.08em',
               textAlign: 'center', textTransform: 'uppercase', marginBottom: '1rem',
               transition: 'border-color .22s',
             }}
-            placeholder="CAELLITTA-2025-001"
+            placeholder="CODICE-PRENOTAZIONE"
             value={code}
             onChange={e => setCode(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && access()}
             onFocus={e => e.target.style.borderColor = 'var(--gold)'}
-            onBlur={e => e.target.style.borderColor = 'rgba(201,171,114,.25)'}
+            onBlur={e => e.target.style.borderColor = 'rgba(156,122,60,.3)'}
           />
           {error && (
-            <div style={{ fontSize: '0.75rem', color: '#e08080', marginBottom: '1rem', textAlign: 'left' }}>{error}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--red)', marginBottom: '1rem', textAlign: 'left' }}>{error}</div>
           )}
           <button
             className="btn-primary"
