@@ -8,6 +8,8 @@ const heroPublicUrl = (propertyId) =>
   `https://ejjatrfeeatgiqpomibd.supabase.co/storage/v1/object/public/${HERO_BUCKET}/${heroPath(propertyId)}`
 
 const EMPTY_ITEM = { icon: '✨', title_it: '', title_en: '', text_it: '', text_en: '' }
+const EMPTY_CONTACT = { name: '', role_it: '', role_en: '', phone: '', is_whatsapp: false, avatar: 'person' }
+const EMPTY_EMERGENCY = { icon: 'medical', name_it: '', name_en: '', num: '' }
 
 export default function PortaleOspiti() {
   const { activePropertyId } = useActiveProperty()
@@ -28,6 +30,8 @@ export default function PortaleOspiti() {
     setContent(c || {
       welcome_text_it: '', welcome_text_en: '', wifi_ssid: '', wifi_password: '',
       hero_image_url: null, casa_items: [], dintorni_items: [], regole_items: [],
+      contacts_items: [], emergency_items: [],
+      theme_bg: '#111009', theme_card: '#221d14', theme_accent: '#c9ab72', theme_text: '#f0ebe1',
     })
     if (c?.hero_image_url) setHeroPreview(c.hero_image_url)
     setLoading(false)
@@ -46,6 +50,12 @@ export default function PortaleOspiti() {
       casa_items: content.casa_items,
       dintorni_items: content.dintorni_items,
       regole_items: content.regole_items,
+      contacts_items: content.contacts_items,
+      emergency_items: content.emergency_items,
+      theme_bg: content.theme_bg,
+      theme_card: content.theme_card,
+      theme_accent: content.theme_accent,
+      theme_text: content.theme_text,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'property_id' })
     setSaving(false)
@@ -71,8 +81,8 @@ export default function PortaleOspiti() {
       return { ...p, [listKey]: list }
     })
   }
-  function addItem(listKey) {
-    setContent(p => ({ ...p, [listKey]: [...(p[listKey] || []), { ...EMPTY_ITEM }] }))
+  function addItem(listKey, emptyShape) {
+    setContent(p => ({ ...p, [listKey]: [...(p[listKey] || []), { ...(emptyShape || EMPTY_ITEM) }] }))
   }
   function removeItem(listKey, index) {
     setContent(p => ({ ...p, [listKey]: p[listKey].filter((_, i) => i !== index) }))
@@ -103,7 +113,7 @@ export default function PortaleOspiti() {
 
       <h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 300, fontSize: '1.6rem', color: 'var(--gold)', marginBottom: '0.2rem' }}>
         Portale ospiti
-        <span style={{ marginLeft: '.6rem', fontSize: '1rem', cursor: 'help' }} title="Questa intera pagina è la configurazione del Portale Ospiti">⚙</span>
+
       </h2>
       <p style={{ fontSize: '0.75rem', color: 'var(--salt-faint)', marginBottom: '1.5rem' }}>
         Modifica foto e testi che gli ospiti vedono nel loro Welcome Book (/ospite/:codice).
@@ -157,6 +167,79 @@ export default function PortaleOspiti() {
         </div>
       </div>
 
+      {/* COLORI TEMA — l'ospite li vede nel Welcome Book, calcolo automatico delle sfumature */}
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <div className="sec-hdr"><span className="sec-title">Colori del Welcome Book</span></div>
+        <p style={{ fontSize: '0.72rem', color: 'var(--salt-faint)', marginBottom: '1rem' }}>
+          Scegli 4 colori base: il resto (sfumature, trasparenze) si calcola da solo.
+        </p>
+        <div className="form-grid">
+          <ColorField label="Sfondo" value={content.theme_bg} onChange={v => setContent(p => ({ ...p, theme_bg: v }))} />
+          <ColorField label="Sfondo schede" value={content.theme_card} onChange={v => setContent(p => ({ ...p, theme_card: v }))} />
+          <ColorField label="Colore accento" value={content.theme_accent} onChange={v => setContent(p => ({ ...p, theme_accent: v }))} />
+          <ColorField label="Colore testo" value={content.theme_text} onChange={v => setContent(p => ({ ...p, theme_text: v }))} />
+        </div>
+      </div>
+
+      {/* CONTATTI */}
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <div className="sec-hdr">
+          <span className="sec-title">Contatti</span>
+          <button className="btn-sm" onClick={() => addItem('contacts_items', EMPTY_CONTACT)}>+ Aggiungi contatto</button>
+        </div>
+        {(content.contacts_items || []).length === 0 && <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)' }}>Nessun contatto. Aggiungine uno (es. il tuo WhatsApp principale).</p>}
+        {(content.contacts_items || []).map((c, i) => (
+          <div key={i} className="item-card">
+            <div className="item-row" style={{ marginBottom: '.5rem' }}>
+              <input className="form-input" style={{ flex: 1, minWidth: 140 }} placeholder="Nome (vuoto = nome struttura)" value={c.name}
+                onChange={e => updateItem('contacts_items', i, 'name', e.target.value)} />
+              <select className="form-select" style={{ width: 160 }} value={c.avatar} onChange={e => updateItem('contacts_items', i, 'avatar', e.target.value)}>
+                <option value="chat">💬 Chat</option>
+                <option value="person">👤 Persona</option>
+              </select>
+            </div>
+            <div className="item-row" style={{ marginBottom: '.5rem' }}>
+              <input className="form-input" style={{ flex: 1, minWidth: 140 }} placeholder="Ruolo IT (es. Host)" value={c.role_it}
+                onChange={e => updateItem('contacts_items', i, 'role_it', e.target.value)} />
+              <input className="form-input" style={{ flex: 1, minWidth: 140 }} placeholder="Ruolo EN" value={c.role_en}
+                onChange={e => updateItem('contacts_items', i, 'role_en', e.target.value)} />
+              <input className="form-input" style={{ flex: 1, minWidth: 160 }} placeholder="+39 ..." value={c.phone}
+                onChange={e => updateItem('contacts_items', i, 'phone', e.target.value)} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '0.75rem', color: 'var(--salt-dim)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={!!c.is_whatsapp} onChange={e => updateItem('contacts_items', i, 'is_whatsapp', e.target.checked)} style={{ accentColor: 'var(--gold)' }} />
+                È un numero WhatsApp (apre chat invece di chiamare)
+              </label>
+              <button className="btn-sm danger" onClick={() => removeItem('contacts_items', i)}>🗑</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* NUMERI DI EMERGENZA */}
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <div className="sec-hdr">
+          <span className="sec-title">Numeri di emergenza</span>
+          <button className="btn-sm" onClick={() => addItem('emergency_items', EMPTY_EMERGENCY)}>+ Aggiungi numero</button>
+        </div>
+        {(content.emergency_items || []).length === 0 && <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)' }}>Nessun numero di emergenza configurato.</p>}
+        {(content.emergency_items || []).map((e, i) => (
+          <div key={i} className="item-row" style={{ marginBottom: '.5rem', alignItems: 'center' }}>
+            <select className="form-select" style={{ width: 130 }} value={e.icon} onChange={ev => updateItem('emergency_items', i, 'icon', ev.target.value)}>
+              <option value="medical">🚑 Sanitario</option>
+              <option value="fire">🚒 Vigili del fuoco</option>
+              <option value="police">🚓 Polizia</option>
+              <option value="hospital">🏥 Ospedale</option>
+            </select>
+            <input className="form-input" style={{ flex: 1, minWidth: 130 }} placeholder="Nome IT" value={e.name_it} onChange={ev => updateItem('emergency_items', i, 'name_it', ev.target.value)} />
+            <input className="form-input" style={{ flex: 1, minWidth: 130 }} placeholder="Nome EN" value={e.name_en} onChange={ev => updateItem('emergency_items', i, 'name_en', ev.target.value)} />
+            <input className="form-input" style={{ width: 140 }} placeholder="Numero" value={e.num} onChange={ev => updateItem('emergency_items', i, 'num', ev.target.value)} />
+            <button className="btn-sm danger" onClick={() => removeItem('emergency_items', i)}>🗑</button>
+          </div>
+        ))}
+      </div>
+
       <ItemListEditor title="La casa" listKey="casa_items" items={content.casa_items || []}
         onUpdate={updateItem} onAdd={addItem} onRemove={removeItem} onMove={moveItem} />
       <ItemListEditor title="Dintorni" listKey="dintorni_items" items={content.dintorni_items || []}
@@ -167,6 +250,19 @@ export default function PortaleOspiti() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
         <button className="btn-primary" onClick={save} disabled={saving}>{saving ? 'Salvataggio…' : 'Salva tutto'}</button>
         {savedMsg && <span style={{ fontSize: '0.78rem', color: 'var(--salt-dim)' }}>{savedMsg}</span>}
+      </div>
+    </div>
+  )
+}
+
+function ColorField({ label, value, onChange }) {
+  return (
+    <div className="form-group">
+      <label className="form-label">{label}</label>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <input type="color" value={value || '#000000'} onChange={e => onChange(e.target.value)}
+          style={{ width: 42, height: 38, border: '1px solid rgba(156,122,60,.3)', padding: 0, cursor: 'pointer', background: 'none' }} />
+        <input className="form-input" value={value || ''} onChange={e => onChange(e.target.value)} placeholder="#000000" />
       </div>
     </div>
   )
