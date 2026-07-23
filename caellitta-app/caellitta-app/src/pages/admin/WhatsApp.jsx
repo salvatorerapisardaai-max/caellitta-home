@@ -6,7 +6,7 @@ import { useActiveProperty } from '../../lib/PropertyContext'
 const VARS_FIELDS = [
   { key: 'name',   label: 'Nome ospite',         ph: 'Marco',              full: true },
   { key: 'code',   label: 'Codice prenotazione',  ph: 'CAELLITTA-2025-001', full: true },
-  { key: 'wb',     label: 'Link sito',            ph: 'caellitta-home.vercel.app', full: true },
+  { key: 'wb',     label: 'Link sito',            ph: 'https://tuosito.vercel.app', full: true },
   { key: 'cin',    label: 'Check-in',             ph: '5 Giu' },
   { key: 'cout',   label: 'Check-out',            ph: '12 Giu' },
   { key: 'nights', label: 'Notti',                ph: '7' },
@@ -43,7 +43,7 @@ export default function WhatsApp() {
   const [draft, setDraft] = useState({ name: '', phase: '', timing: '', body: '', trigger_event: 'check_in', trigger_offset_days: 0 })
   const [savingTpl, setSavingTpl] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [vars, setVars] = useState({ name: '', cin: '', cout: '', nights: '', guests: '', code: '', wb: window.location.host })
+  const [vars, setVars] = useState({ name: '', cin: '', cout: '', nights: '', guests: '', code: '', wb: window.location.origin })
   const [mobileTab, setMobileTab] = useState('vars') // 'vars' | 'templates' | 'preview'
   const [bookings, setBookings] = useState([])
   const [bookingId, setBookingId] = useState('')
@@ -104,7 +104,8 @@ export default function WhatsApp() {
 
   const tpls = templates.filter(t => t.lang === lang)
   const current = tpls.find(t => t.id === activeId) || tpls[0]
-  const rendered = current ? renderTemplate(current.body, vars) : ''
+  const renderVars = { ...vars, property: activeProperty?.name || '' }
+  const rendered = current ? renderTemplate(current.body, renderVars) : ''
   const isEditing = editingId && current && editingId === current.id
 
   function copy() {
@@ -212,7 +213,7 @@ export default function WhatsApp() {
             </button>
           ))}
         </div>
-        <span className="icon-configurable" title="Puoi modificare, duplicare, eliminare o creare nuovi template" style={{ fontSize: '0.9rem', cursor: 'help' }}>⚙</span>
+
       </div>
       {tpls.map(t => (
         <div key={t.id} style={{
@@ -293,7 +294,7 @@ export default function WhatsApp() {
         <div style={{ background: '#0d1a0d', padding: '0.8rem' }}>
           <div style={{ background: '#1a2e1a', borderRadius: '0 8px 8px 8px', padding: '0.8rem 1rem' }}>
             <div style={{ fontSize: '0.76rem', color: 'rgba(240,235,225,.85)', lineHeight: 1.75, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-              dangerouslySetInnerHTML={{ __html: formatWhatsapp(renderTemplate(draft.body, vars)) }} />
+              dangerouslySetInnerHTML={{ __html: formatWhatsapp(renderTemplate(draft.body, renderVars)) }} />
           </div>
         </div>
       </div>
