@@ -4,11 +4,11 @@ import { sb } from '../../lib/supabase'
 import { setStoredCode } from '../../lib/collaboratorAuth'
 
 const BRAND = {
-  lavaDeep:  '#0d2b33',
-  lavaMid:   '#14424f',
-  goldWarm:  '#e7b682',
-  goldDim:   '#c49a5f',
-  salt:      '#f6efe2',
+  lavaDeep:  '#faf5ea',
+  lavaMid:   '#ffffff',
+  goldWarm:  '#9c7a3c',
+  goldDim:   '#b8945a',
+  salt:      '#2b2318',
 }
 
 const css = `
@@ -24,12 +24,13 @@ const css = `
   }
   .collab-login-card {
     background: ${BRAND.lavaMid};
-    border: 1px solid rgba(231,182,130,0.25);
+    border: 1px solid rgba(156,122,60,0.28);
     border-radius: 4px;
     padding: 3rem 2.5rem;
     width: 100%;
     max-width: 420px;
     text-align: center;
+    box-shadow: 0 4px 20px rgba(43,35,24,0.06);
   }
   .collab-login-wordmark {
     font-family: 'Cormorant Garamond', serif;
@@ -44,7 +45,7 @@ const css = `
     font-family: 'Jost', sans-serif;
     font-size: 0.75rem;
     font-weight: 200;
-    color: rgba(246,239,226,0.55);
+    color: rgba(43,35,24,0.55);
     letter-spacing: 0.2em;
     text-transform: uppercase;
     margin-bottom: 2.5rem;
@@ -53,7 +54,7 @@ const css = `
     display: block;
     font-size: 0.7rem;
     font-weight: 400;
-    color: rgba(246,239,226,0.6);
+    color: rgba(43,35,24,0.65);
     letter-spacing: 0.18em;
     text-transform: uppercase;
     text-align: left;
@@ -63,8 +64,8 @@ const css = `
     width: 100%;
     box-sizing: border-box;
     padding: 0.75rem 1rem;
-    background: rgba(13,43,51,0.6);
-    border: 1px solid rgba(231,182,130,0.3);
+    background: ${BRAND.lavaDeep};
+    border: 1px solid rgba(156,122,60,0.3);
     border-radius: 2px;
     color: ${BRAND.salt};
     font-family: 'Jost', sans-serif;
@@ -81,7 +82,7 @@ const css = `
     width: 100%;
     padding: 0.9rem 1rem;
     background: ${BRAND.goldWarm};
-    color: ${BRAND.lavaDeep};
+    color: #fff;
     border: none;
     border-radius: 2px;
     font-family: 'Jost', sans-serif;
@@ -106,20 +107,20 @@ const css = `
     line-height: 1.6;
   }
   .collab-login-msg.success {
-    color: #a8d5b5;
+    color: #2f6b46;
   }
   .collab-login-msg.error {
-    color: #e8a598;
+    color: #963832;
   }
   .collab-login-divider {
     border: none;
-    border-top: 1px solid rgba(231,182,130,0.15);
+    border-top: 1px solid rgba(156,122,60,0.18);
     margin: 2rem 0 1.5rem;
   }
   .collab-login-hint {
     font-size: 0.75rem;
     font-weight: 200;
-    color: rgba(246,239,226,0.35);
+    color: rgba(43,35,24,0.4);
     line-height: 1.6;
   }
 `
@@ -150,7 +151,7 @@ export default function CollaboratoriLogin() {
       <style>{css}</style>
       <div className="collab-login-wrap">
         <div className="collab-login-card">
-          <div className="collab-login-wordmark">Caellitta</div>
+          <div className="collab-login-wordmark">Ospita</div>
           <div className="collab-login-subtitle">Area Collaboratori</div>
           <label className="collab-login-label">Codice di accesso</label>
           <input
@@ -174,7 +175,7 @@ export default function CollaboratoriLogin() {
           <hr className="collab-login-divider" />
           <p className="collab-login-hint">
             Accesso riservato ai collaboratori autorizzati.<br />
-            Il codice ti viene fornito da Salvatore — nessuna email richiesta.
+            Il codice ti viene fornito da chi gestisce la struttura — nessuna email richiesta.
           </p>
         </div>
       </div>
