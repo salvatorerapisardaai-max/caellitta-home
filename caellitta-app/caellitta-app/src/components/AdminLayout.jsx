@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { sb } from '../lib/supabase'
 import { useActiveProperty } from '../lib/PropertyContext'
+import Modal from './Modal'
 
 const NAV = [
   { to: '/',              label: 'Dashboard',      icon: GridIcon,  exact: true },
@@ -24,7 +25,13 @@ const TITLES = {
 
 export default function AdminLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [theme, setTheme] = useState(() => localStorage.getItem('ospita_theme') || 'light')
   const today = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('ospita_theme', theme)
+  }, [theme])
 
   return (
     <>
@@ -78,7 +85,20 @@ export default function AdminLayout() {
               </button>
               <PageTitle />
             </div>
-            <span className="topbar-date">{today}</span>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span className="topbar-date">{today}</span>
+              <button
+                onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+                title={theme === 'light' ? 'Passa al tema scuro' : 'Passa al tema chiaro'}
+                style={{
+                  background: 'none', border: '1px solid var(--gold-dim2)', color: 'var(--gold)',
+                  width: 30, height: 30, borderRadius: 4, cursor: 'pointer', fontSize: '0.9rem',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '0.8rem',
+                }}
+              >
+                {theme === 'light' ? '🌙' : '☀️'}
+              </button>
+            </div>
           </div>
 
           {/* MOBILE DRAWER */}
@@ -97,7 +117,22 @@ export default function AdminLayout() {
 }
 
 function SidebarContent({ onNav }) {
-  const { properties, activePropertyId, setActivePropertyId, loading } = useActiveProperty()
+  const { properties, activePropertyId, setActivePropertyId, loading, createProperty } = useActiveProperty()
+  const [newPropModal, setNewPropModal] = useState(false)
+  const [newProp, setNewProp] = useState({ name: '', address: '', cin: '', cir: '' })
+  const [newPropError, setNewPropError] = useState('')
+  const [creatingProp, setCreatingProp] = useState(false)
+
+  async function submitNewProperty() {
+    if (!newProp.name.trim()) { setNewPropError('Il nome della struttura è obbligatorio.'); return }
+    setCreatingProp(true)
+    setNewPropError('')
+    const { error } = await createProperty(newProp)
+    setCreatingProp(false)
+    if (error) { setNewPropError(error.message); return }
+    setNewProp({ name: '', address: '', cin: '', cir: '' })
+    setNewPropModal(false)
+  }
 
   const handleLogout = async () => {
     await sb.auth.signOut()
@@ -129,6 +164,46 @@ function SidebarContent({ onNav }) {
             {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         )}
+        {!loading && properties.length < 5 && (
+          <button className="btn-sm" style={{ marginTop: '0.6rem', width: '100%' }} onClick={() => setNewPropModal(true)}>
+            + Nuova struttura ({properties.length}/5)
+          </button>
+        )}
+        {!loading && properties.length >= 5 && (
+          <p style={{ fontSize: '0.62rem', color: 'var(--salt-faint)', marginTop: '0.6rem' }}>Limite di 5 strutture raggiunto</p>
+        )}
+
+        <Modal open={newPropModal} onClose={() => setNewPropModal(false)} title="Nuova struttura">
+          {newPropError && (
+            <div style={{ background: 'rgba(168,69,63,.12)', border: '1px solid rgba(168,69,63,.4)', padding: '0.7rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: 'var(--red)' }}>
+              {newPropError}
+            </div>
+          )}
+          <div className="form-group">
+            <label className="form-label">Nome struttura *</label>
+            <input className="form-input" value={newProp.name} onChange={e => setNewProp(p => ({ ...p, name: e.target.value }))} placeholder="Es. Villa Panorama" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Indirizzo</label>
+            <input className="form-input" value={newProp.address} onChange={e => setNewProp(p => ({ ...p, address: e.target.value }))} />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">CIN</label>
+              <input className="form-input" value={newProp.cin} onChange={e => setNewProp(p => ({ ...p, cin: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">CIR</label>
+              <input className="form-input" value={newProp.cir} onChange={e => setNewProp(p => ({ ...p, cir: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1rem' }}>
+            <button className="btn-primary" style={{ flex: 1 }} onClick={submitNewProperty} disabled={creatingProp}>
+              {creatingProp ? 'Creazione…' : 'Crea struttura'}
+            </button>
+            <button className="btn-cancel" onClick={() => setNewPropModal(false)}>Annulla</button>
+          </div>
+        </Modal>
       </div>
 
       <nav style={{ flex: 1, padding: '1.2rem 0' }}>
