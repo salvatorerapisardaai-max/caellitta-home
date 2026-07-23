@@ -20,6 +20,29 @@ export default function Convenzioni() {
   const [editing,  setEditing]    = useState(null)
   const [saving,   setSaving]     = useState(false)
   const [saveError,setSaveError]  = useState('')
+  const [newCatName, setNewCatName] = useState('')
+
+  async function addCategory() {
+    if (!newCatName.trim()) return
+    const slug = newCatName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    const { error } = await sb.from('coupon_categories').insert({
+      property_id: activePropertyId, name: newCatName.trim(), slug, color: '#9c7a3c',
+    })
+    if (error) { alert('Errore: ' + error.message); return }
+    setNewCatName('')
+    load()
+  }
+
+  async function deleteCategory(cat) {
+    const inUso = templates.filter(t => t.category_id === cat.id).length
+    if (inUso > 0) {
+      alert(`"${cat.name}" è usata da ${inUso} convenzioni. Cambia categoria a quelle convenzioni prima di eliminarla.`)
+      return
+    }
+    if (!confirm(`Eliminare la categoria "${cat.name}"?`)) return
+    await sb.from('coupon_categories').delete().eq('id', cat.id)
+    load()
+  }
 
   useEffect(() => { if (activePropertyId) load() }, [activePropertyId])
 
@@ -183,6 +206,33 @@ export default function Convenzioni() {
           Assegna coupon →
         </button>
         <button className="btn-primary" onClick={openNew}>+ Nuova convenzione</button>
+      </div>
+
+      {/* CATEGORIE — servono a raggruppare le convenzioni nel Welcome Book dell'ospite */}
+      <div className="card" style={{ marginBottom:'1.5rem' }}>
+        <div className="sec-hdr"><span className="sec-title">Categorie</span></div>
+        <p style={{ fontSize:'0.72rem', color:'var(--salt-faint)', marginBottom:'0.8rem' }}>
+          Raggruppano le convenzioni nel Welcome Book. Personalizzale come vuoi.
+        </p>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'0.4rem', marginBottom:'0.8rem' }}>
+          {categories.length === 0 && <span style={{ fontSize:'0.78rem', color:'var(--salt-faint)' }}>Nessuna categoria.</span>}
+          {categories.map(cat => (
+            <span key={cat.id} style={{
+              display:'inline-flex', alignItems:'center', gap:'0.4rem', fontSize:'0.72rem',
+              padding:'0.25rem 0.6rem', border:'1px solid var(--gold-dim2)', color:'var(--salt-dim)',
+            }}>
+              <span style={{ width:8, height:8, borderRadius:'50%', background: cat.color || 'var(--gold)' }} />
+              {cat.name}
+              <button className="btn-sm" style={{ padding:'0 0.3rem', border:'none' }} onClick={() => deleteCategory(cat)}>✕</button>
+            </span>
+          ))}
+        </div>
+        <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+          <input className="form-input" style={{ flex:1, minWidth:180 }} placeholder="Nome nuova categoria (es. Spiagge)"
+            value={newCatName} onChange={e => setNewCatName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addCategory()} />
+          <button className="btn-sm" onClick={addCategory} disabled={!newCatName.trim()}>+ Aggiungi categoria</button>
+        </div>
       </div>
 
       {/* PARTNER GROUPS */}
