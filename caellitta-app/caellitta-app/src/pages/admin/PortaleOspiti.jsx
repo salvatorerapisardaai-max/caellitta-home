@@ -7,6 +7,12 @@ const heroPath = (propertyId) => `${propertyId}/benvenuto.jpg`
 const heroPublicUrl = (propertyId) =>
   `https://ejjatrfeeatgiqpomibd.supabase.co/storage/v1/object/public/${HERO_BUCKET}/${heroPath(propertyId)}`
 
+const THEME_PRESETS = [
+  { name: 'Notte mediterranea', bg: '#111009', card: '#221d14', accent: '#c9ab72', text: '#f0ebe1' },
+  { name: 'Sabbia chiara', bg: '#faf5ea', card: '#ffffff', accent: '#9c7a3c', text: '#2b2318' },
+  { name: 'Blu marino', bg: '#0d2b33', card: '#14424f', accent: '#e7b682', text: '#f6efe2' },
+]
+
 const EMPTY_ITEM = { icon: '✨', title_it: '', title_en: '', text_it: '', text_en: '' }
 const EMPTY_CONTACT = { name: '', role_it: '', role_en: '', phone: '', is_whatsapp: false, avatar: 'person' }
 const EMPTY_EMERGENCY = { icon: 'medical', name_it: '', name_en: '', num: '' }
@@ -30,7 +36,7 @@ export default function PortaleOspiti() {
     setContent(c || {
       welcome_text_it: '', welcome_text_en: '', wifi_ssid: '', wifi_password: '',
       hero_image_url: null, casa_items: [], dintorni_items: [], regole_items: [],
-      contacts_items: [], emergency_items: [],
+      contacts_items: [], emergency_items: [], custom_sections: [],
       theme_bg: '#111009', theme_card: '#221d14', theme_accent: '#c9ab72', theme_text: '#f0ebe1',
     })
     if (c?.hero_image_url) setHeroPreview(c.hero_image_url)
@@ -52,6 +58,7 @@ export default function PortaleOspiti() {
       regole_items: content.regole_items,
       contacts_items: content.contacts_items,
       emergency_items: content.emergency_items,
+      custom_sections: content.custom_sections,
       theme_bg: content.theme_bg,
       theme_card: content.theme_card,
       theme_accent: content.theme_accent,
@@ -81,6 +88,58 @@ export default function PortaleOspiti() {
       return { ...p, [listKey]: list }
     })
   }
+  function addCustomSection() {
+    setContent(p => ({
+      ...p,
+      custom_sections: [...(p.custom_sections || []), {
+        id: 'sec-' + Date.now(), icon: '✨', label_it: 'Nuova sezione', label_en: 'New section', items: [],
+      }],
+    }))
+  }
+  function updateCustomSectionMeta(idx, field, value) {
+    setContent(p => {
+      const list = [...p.custom_sections]
+      list[idx] = { ...list[idx], [field]: value }
+      return { ...p, custom_sections: list }
+    })
+  }
+  function removeCustomSection(idx) {
+    if (!confirm('Eliminare questa sezione? Gli ospiti non la vedranno più.')) return
+    setContent(p => ({ ...p, custom_sections: p.custom_sections.filter((_, i) => i !== idx) }))
+  }
+  function moveCustomSection(idx, dir) {
+    setContent(p => {
+      const list = [...p.custom_sections]
+      const target = idx + dir
+      if (target < 0 || target >= list.length) return p
+      ;[list[idx], list[target]] = [list[target], list[idx]]
+      return { ...p, custom_sections: list }
+    })
+  }
+  function addCustomSectionItem(secIdx) {
+    setContent(p => {
+      const list = [...p.custom_sections]
+      list[secIdx] = { ...list[secIdx], items: [...list[secIdx].items, { ...EMPTY_ITEM }] }
+      return { ...p, custom_sections: list }
+    })
+  }
+  function updateCustomSectionItem(secIdx, itemIdx, field, value) {
+    setContent(p => {
+      const list = [...p.custom_sections]
+      const items = [...list[secIdx].items]
+      items[itemIdx] = { ...items[itemIdx], [field]: value }
+      list[secIdx] = { ...list[secIdx], items }
+      return { ...p, custom_sections: list }
+    })
+  }
+  function removeCustomSectionItem(secIdx, itemIdx) {
+    setContent(p => {
+      const list = [...p.custom_sections]
+      list[secIdx] = { ...list[secIdx], items: list[secIdx].items.filter((_, i) => i !== itemIdx) }
+      return { ...p, custom_sections: list }
+    })
+  }
+
   function addItem(listKey, emptyShape) {
     setContent(p => ({ ...p, [listKey]: [...(p[listKey] || []), { ...(emptyShape || EMPTY_ITEM) }] }))
   }
@@ -171,8 +230,25 @@ export default function PortaleOspiti() {
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div className="sec-hdr"><span className="sec-title">Colori del Welcome Book</span></div>
         <p style={{ fontSize: '0.72rem', color: 'var(--salt-faint)', marginBottom: '1rem' }}>
-          Scegli 4 colori base: il resto (sfumature, trasparenze) si calcola da solo.
+          Parti da un tema pronto, oppure scegli i 4 colori base: il resto (sfumature, trasparenze) si calcola da solo.
         </p>
+        <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap', marginBottom: '1.2rem' }}>
+          {THEME_PRESETS.map(preset => (
+            <button key={preset.name} onClick={() => setContent(p => ({ ...p, theme_bg: preset.bg, theme_card: preset.card, theme_accent: preset.accent, theme_text: preset.text }))}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', cursor: 'pointer',
+                background: 'none', border: content.theme_accent === preset.accent && content.theme_bg === preset.bg ? '2px solid var(--gold)' : '1px solid rgba(156,122,60,.25)',
+                padding: '0.6rem', borderRadius: 4,
+              }}>
+              <div style={{ display: 'flex', width: 64, height: 36, borderRadius: 3, overflow: 'hidden', border: '1px solid rgba(0,0,0,.1)' }}>
+                <div style={{ flex: 1, background: preset.bg }} />
+                <div style={{ flex: 1, background: preset.card }} />
+                <div style={{ flex: 1, background: preset.accent }} />
+              </div>
+              <span style={{ fontSize: '0.62rem', color: 'var(--salt-dim)' }}>{preset.name}</span>
+            </button>
+          ))}
+        </div>
         <div className="form-grid">
           <ColorField label="Sfondo" value={content.theme_bg} onChange={v => setContent(p => ({ ...p, theme_bg: v }))} />
           <ColorField label="Sfondo schede" value={content.theme_card} onChange={v => setContent(p => ({ ...p, theme_card: v }))} />
@@ -246,6 +322,57 @@ export default function PortaleOspiti() {
         onUpdate={updateItem} onAdd={addItem} onRemove={removeItem} onMove={moveItem} />
       <ItemListEditor title="Regole della casa" listKey="regole_items" items={content.regole_items || []}
         onUpdate={updateItem} onAdd={addItem} onRemove={removeItem} onMove={moveItem} />
+
+      {/* SEZIONI PERSONALIZZATE — capitoli aggiuntivi oltre ai 7 fissi, l'host può crearne quante vuole */}
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <div className="sec-hdr">
+          <span className="sec-title">Sezioni personalizzate</span>
+          <button className="btn-sm" onClick={addCustomSection}>+ Nuova sezione</button>
+        </div>
+        <p style={{ fontSize: '0.72rem', color: 'var(--salt-faint)', marginBottom: '1rem' }}>
+          Aggiungi capitoli su misura al Welcome Book — appariranno nel menu dell'ospite dopo "Regole".
+        </p>
+        {(content.custom_sections || []).length === 0 && (
+          <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)' }}>Nessuna sezione personalizzata ancora.</p>
+        )}
+        {(content.custom_sections || []).map((sec, secIdx) => (
+          <div key={sec.id} style={{ border: '1px solid var(--gold-dim2)', padding: '1rem', marginBottom: '1rem' }}>
+            <div className="item-row" style={{ marginBottom: '.6rem', alignItems: 'center' }}>
+              <input className="form-input" style={{ width: 60, textAlign: 'center' }} value={sec.icon}
+                onChange={e => updateCustomSectionMeta(secIdx, 'icon', e.target.value)} placeholder="🌟" />
+              <input className="form-input" style={{ flex: 1, minWidth: 140 }} value={sec.label_it}
+                onChange={e => updateCustomSectionMeta(secIdx, 'label_it', e.target.value)} placeholder="Nome sezione IT" />
+              <input className="form-input" style={{ flex: 1, minWidth: 140 }} value={sec.label_en}
+                onChange={e => updateCustomSectionMeta(secIdx, 'label_en', e.target.value)} placeholder="Nome sezione EN" />
+              <button className="btn-sm" onClick={() => moveCustomSection(secIdx, -1)} disabled={secIdx === 0}>↑</button>
+              <button className="btn-sm" onClick={() => moveCustomSection(secIdx, 1)} disabled={secIdx === content.custom_sections.length - 1}>↓</button>
+              <button className="btn-sm danger" onClick={() => removeCustomSection(secIdx)}>🗑 Elimina sezione</button>
+            </div>
+
+            {sec.items.length === 0 && <p style={{ fontSize: '0.72rem', color: 'var(--salt-faint)', marginBottom: '.5rem' }}>Nessuna voce in questa sezione.</p>}
+            {sec.items.map((item, itemIdx) => (
+              <div key={itemIdx} className="item-card">
+                <div className="item-row" style={{ marginBottom: '.5rem' }}>
+                  <input className="form-input" style={{ width: 60, textAlign: 'center' }} value={item.icon}
+                    onChange={e => updateCustomSectionItem(secIdx, itemIdx, 'icon', e.target.value)} placeholder="🔑" />
+                  <input className="form-input" style={{ flex: 1, minWidth: 140 }} value={item.title_it}
+                    onChange={e => updateCustomSectionItem(secIdx, itemIdx, 'title_it', e.target.value)} placeholder="Titolo IT" />
+                  <input className="form-input" style={{ flex: 1, minWidth: 140 }} value={item.title_en}
+                    onChange={e => updateCustomSectionItem(secIdx, itemIdx, 'title_en', e.target.value)} placeholder="Titolo EN" />
+                </div>
+                <div className="item-row" style={{ marginBottom: '.5rem' }}>
+                  <textarea className="form-textarea" style={{ flex: 1, minHeight: 60 }} value={item.text_it}
+                    onChange={e => updateCustomSectionItem(secIdx, itemIdx, 'text_it', e.target.value)} placeholder="Testo IT" />
+                  <textarea className="form-textarea" style={{ flex: 1, minHeight: 60 }} value={item.text_en}
+                    onChange={e => updateCustomSectionItem(secIdx, itemIdx, 'text_en', e.target.value)} placeholder="Testo EN" />
+                </div>
+                <button className="btn-sm danger" onClick={() => removeCustomSectionItem(secIdx, itemIdx)}>🗑 Rimuovi voce</button>
+              </div>
+            ))}
+            <button className="btn-sm" onClick={() => addCustomSectionItem(secIdx)} style={{ marginTop: '.4rem' }}>+ Aggiungi voce</button>
+          </div>
+        ))}
+      </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
         <button className="btn-primary" onClick={save} disabled={saving}>{saving ? 'Salvataggio…' : 'Salva tutto'}</button>
