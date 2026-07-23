@@ -26,6 +26,7 @@ export default function Adempimenti() {
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
   const [loading, setLoading] = useState(true)
+  const [approving, setApproving] = useState(null)
 
   useEffect(() => { if (activePropertyId) loadAll() }, [activePropertyId])
 
@@ -37,18 +38,18 @@ export default function Adempimenti() {
 
     const { data: istat } = await sb
       .from('istat_submissions')
-      .select('id, submission_date, movement_type, status, attempts, last_error')
+      .select('id, submission_date, movement_type, status, attempts, last_error, reviewed, booking_id, bookings(guest_name, check_in, check_out)')
       .eq('property_id', activePropertyId)
       .order('submission_date', { ascending: false })
-      .limit(100)
+      .limit(150)
     setIstatRows(istat || [])
 
     const { data: allog } = await sb
       .from('guest_registrations')
-      .select('id, status, attempts, last_error, deadline_at, sent_at, receipt_storage_path, booking_id, bookings(guest_name, check_in)')
+      .select('id, status, attempts, last_error, deadline_at, sent_at, receipt_storage_path, reviewed, booking_id, bookings(guest_name, check_in, check_out)')
       .eq('property_id', activePropertyId)
       .order('deadline_at', { ascending: true })
-      .limit(100)
+      .limit(150)
     setAllogRows(allog || [])
 
     setLoading(false)
@@ -63,12 +64,41 @@ export default function Adempimenti() {
     setSavedMsg(error ? `Errore: ${error.message}` : 'Salvato correttamente.')
   }
 
+  async function approveIstat(id) {
+    setApproving(id)
+    await sb.from('istat_submissions').update({ reviewed: true }).eq('id', id)
+    await loadAll()
+    setApproving(null)
+  }
+  async function approveAllIstat() {
+    const ids = istatRows.filter(r => !r.reviewed && r.status !== 'sent').map(r => r.id)
+    if (ids.length === 0) return
+    if (!confirm(`Approvare tutti i ${ids.length} invii ISTAT in attesa? Partiranno al prossimo ciclo (entro 15 minuti).`)) return
+    await sb.from('istat_submissions').update({ reviewed: true }).in('id', ids)
+    await loadAll()
+  }
+  async function approveAlloggiati(id) {
+    setApproving(id)
+    await sb.from('guest_registrations').update({ reviewed: true }).eq('id', id)
+    await loadAll()
+    setApproving(null)
+  }
+  async function approveAllAlloggiati() {
+    const ids = allogRows.filter(r => !r.reviewed && r.status !== 'sent').map(r => r.id)
+    if (ids.length === 0) return
+    if (!confirm(`Approvare tutti i ${ids.length} invii Alloggiati Web in attesa? Partiranno al prossimo ciclo (entro 15 minuti).`)) return
+    await sb.from('guest_registrations').update({ reviewed: true }).in('id', ids)
+    await loadAll()
+  }
+
   function isDeadlineClose(deadline_at, status) {
     if (!deadline_at || status === 'sent') return false
     const hoursLeft = (new Date(deadline_at) - new Date()) / 3_600_000
     return hoursLeft < 6
   }
 
+  const istatToApprove = istatRows.filter(r => !r.reviewed && r.status !== 'sent')
+  const allogToApprove = allogRows.filter(r => !r.reviewed && r.status !== 'sent')
   const filteredIstat = filter === 'all' ? istatRows : istatRows.filter(r => r.status === filter)
 
   if (loading) {
@@ -81,8 +111,51 @@ export default function Adempimenti() {
         Adempimenti
       </h2>
       <p style={{ fontSize: '0.75rem', color: 'var(--salt-faint)', marginBottom: '1.5rem' }}>
-        Alloggiati Web (Polizia di Stato) e Osservatorio Turistico Sicilia (ISTAT).
+        Alloggiati Web (Polizia di Stato) e Osservatorio Turistico Sicilia (ISTAT). Ogni invio richiede la tua approvazione prima di partire.
       </p>
+
+      {/* ================= DA APPROVARE — anteprima prima dell'invio ================= */}
+      {(istatToApprove.length > 0 || allogToApprove.length > 0) && (
+        <div className="card" style={{ marginBottom: '1.5rem', borderColor: 'rgba(156,122,60,.5)' }}>
+          <div className="sec-hdr">
+            <span className="sec-title">⏳ Da approvare prima dell'invio</span>
+            <span className="badge badge-amber">{istatToApprove.length + allogToApprove.length}</span>
+          </div>
+          <p style={{ fontSize: '0.72rem', color: 'var(--salt-faint)', marginBottom: '1rem' }}>
+            Controlla i dati esatti che verranno trasmessi. Solo dopo l'approvazione l'invio parte automaticamente (entro 15 minuti).
+          </p>
+
+          {istatToApprove.length > 0 && (
+            <div style={{ marginBottom: '1.2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--salt-dim)' }}>ISTAT Sicilia</span>
+                <button className="btn-sm" onClick={approveAllIstat}>Approva tutti ({istatToApprove.length})</button>
+              </div>
+              {istatToApprove.map(r => (
+                <PreviewRow key={r.id}
+                  guestName={r.bookings?.guest_name}
+                  detail={`${r.movement_type === 'arrival' ? 'Arrivo' : r.movement_type === 'departure' ? 'Partenza' : 'Presenza'} · ${r.submission_date}`}
+                  onApprove={() => approveIstat(r.id)} approving={approving === r.id} />
+              ))}
+            </div>
+          )}
+
+          {allogToApprove.length > 0 && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--salt-dim)' }}>Alloggiati Web</span>
+                <button className="btn-sm" onClick={approveAllAlloggiati}>Approva tutti ({allogToApprove.length})</button>
+              </div>
+              {allogToApprove.map(r => (
+                <PreviewRow key={r.id}
+                  guestName={r.bookings?.guest_name}
+                  detail={`Check-in ${r.bookings?.check_in} → Check-out ${r.bookings?.check_out}${isDeadlineClose(r.deadline_at, r.status) ? ' · ⚠ scadenza vicina' : ''}`}
+                  onApprove={() => approveAlloggiati(r.id)} approving={approving === r.id} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ================= CREDENZIALI ================= */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
@@ -122,10 +195,10 @@ export default function Adempimenti() {
         </form>
       </div>
 
-      {/* ================= CODA ISTAT ================= */}
+      {/* ================= STORICO ISTAT ================= */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div className="sec-hdr">
-          <span className="sec-title">Coda ISTAT Sicilia</span>
+          <span className="sec-title">Storico ISTAT Sicilia</span>
           <select className="form-select" style={{ width: 160 }} value={filter} onChange={e => setFilter(e.target.value)}>
             <option value="all">Tutti</option>
             <option value="pending">In coda</option>
@@ -135,13 +208,14 @@ export default function Adempimenti() {
         </div>
         {filteredIstat.length === 0 ? (
           <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)' }}>
-            Nessuna trasmissione ISTAT in coda. Si popola automaticamente confermando una prenotazione.
+            Nessuna trasmissione ISTAT. Si popola automaticamente confermando una prenotazione.
           </p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
               <thead>
                 <tr style={{ textAlign: 'left', color: 'var(--salt-faint)', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  <th style={{ padding: '0.5rem 0.7rem' }}>Ospite</th>
                   <th style={{ padding: '0.5rem 0.7rem' }}>Data</th>
                   <th style={{ padding: '0.5rem 0.7rem' }}>Movimento</th>
                   <th style={{ padding: '0.5rem 0.7rem' }}>Stato</th>
@@ -151,12 +225,13 @@ export default function Adempimenti() {
               </thead>
               <tbody>
                 {filteredIstat.map(r => (
-                  <tr key={r.id} style={{ borderTop: '1px solid var(--gold-dim)' }}>
+                  <tr key={r.id} style={{ borderTop: '1px solid var(--gold-dim2)' }}>
+                    <td style={{ padding: '0.5rem 0.7rem' }}>{r.bookings?.guest_name || '—'}</td>
                     <td style={{ padding: '0.5rem 0.7rem' }}>{r.submission_date}</td>
                     <td style={{ padding: '0.5rem 0.7rem' }}>{r.movement_type === 'arrival' ? 'Arrivo' : r.movement_type === 'departure' ? 'Partenza' : 'Presenza'}</td>
                     <td style={{ padding: '0.5rem 0.7rem' }}><Badge status={r.status} /></td>
                     <td style={{ padding: '0.5rem 0.7rem' }}>{r.attempts}</td>
-                    <td style={{ padding: '0.5rem 0.7rem', color: '#963832' }}>{r.last_error ? r.last_error.slice(0, 80) : '—'}</td>
+                    <td style={{ padding: '0.5rem 0.7rem', color: 'var(--red)' }}>{r.last_error ? r.last_error.slice(0, 80) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -165,13 +240,13 @@ export default function Adempimenti() {
         )}
       </div>
 
-      {/* ================= CODA ALLOGGIATI WEB ================= */}
+      {/* ================= STORICO ALLOGGIATI WEB ================= */}
       <div className="card">
         <div className="sec-hdr">
-          <span className="sec-title">Coda Alloggiati Web</span>
+          <span className="sec-title">Storico Alloggiati Web</span>
         </div>
         {allogRows.length === 0 ? (
-          <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)' }}>Nessuna trasmissione Alloggiati Web in coda.</p>
+          <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)' }}>Nessuna trasmissione Alloggiati Web.</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
@@ -189,18 +264,16 @@ export default function Adempimenti() {
                 {allogRows.map(r => {
                   const close = isDeadlineClose(r.deadline_at, r.status)
                   return (
-                    <tr key={r.id} style={{ borderTop: '1px solid var(--gold-dim)' }}>
+                    <tr key={r.id} style={{ borderTop: '1px solid var(--gold-dim2)' }}>
                       <td style={{ padding: '0.5rem 0.7rem' }}>{r.bookings?.guest_name || '—'}</td>
                       <td style={{ padding: '0.5rem 0.7rem' }}>{r.bookings?.check_in || '—'}</td>
                       <td style={{ padding: '0.5rem 0.7rem' }}><Badge status={r.status} /></td>
-                      <td style={{ padding: '0.5rem 0.7rem', color: close ? '#963832' : 'inherit', fontWeight: close ? 700 : 400 }}>
+                      <td style={{ padding: '0.5rem 0.7rem', color: close ? 'var(--red)' : 'inherit', fontWeight: close ? 700 : 400 }}>
                         {r.deadline_at ? new Date(r.deadline_at).toLocaleString('it-IT') : '—'}
                       </td>
                       <td style={{ padding: '0.5rem 0.7rem' }}>{r.attempts}</td>
                       <td style={{ padding: '0.5rem 0.7rem' }}>
-                        {r.receipt_storage_path
-                          ? <a href={r.receipt_storage_path} target="_blank" rel="noreferrer" style={{ color: 'var(--gold)', fontWeight: 600 }}>Scarica PDF</a>
-                          : '—'}
+                        {r.receipt_storage_path ? <span style={{ color: 'var(--gold)' }}>disponibile</span> : '—'}
                       </td>
                     </tr>
                   )
@@ -210,6 +283,23 @@ export default function Adempimenti() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function PreviewRow({ guestName, detail, onApprove, approving }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem',
+      background: 'var(--lava-hover)', border: '1px solid var(--gold-dim2)', padding: '0.7rem 0.9rem', marginBottom: '0.4rem',
+    }}>
+      <div>
+        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '0.95rem' }}>{guestName || '—'}</div>
+        <div style={{ fontSize: '0.68rem', color: 'var(--salt-faint)' }}>{detail}</div>
+      </div>
+      <button className="btn-primary" style={{ padding: '0.4rem 0.9rem' }} onClick={onApprove} disabled={approving}>
+        {approving ? '…' : '✓ Approva invio'}
+      </button>
     </div>
   )
 }
