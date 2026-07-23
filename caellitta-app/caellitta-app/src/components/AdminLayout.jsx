@@ -32,7 +32,7 @@ export default function AdminLayout() {
         .admin-wrap { display: flex; height: 100vh; overflow: hidden; }
         .sidebar { width: var(--sidebar); flex-shrink: 0; background: var(--lava-mid); border-right: 1px solid var(--gold-dim); display: flex; flex-direction: column; height: 100vh; overflow-y: auto; }
         .main-area { flex: 1; height: 100vh; overflow-y: auto; overflow-x: hidden; min-width: 0; }
-        .topbar { position: sticky; top: 0; z-index: 100; background: rgba(17,16,9,0.96); backdrop-filter: blur(16px); border-bottom: 1px solid var(--gold-dim); display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; }
+        .topbar { position: sticky; top: 0; z-index: 100; background: rgba(250,245,234,0.92); backdrop-filter: blur(16px); border-bottom: 1px solid var(--gold-dim2); display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; }
         .hamburger { display: none; background: none; border: 1px solid var(--gold-dim); color: var(--gold); width: 34px; height: 34px; cursor: pointer; font-size: 1rem; align-items: center; justify-content: center; flex-shrink: 0; }
         .topbar-date { font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--salt-faint); }
         .page-content { padding: 1.5rem; }
