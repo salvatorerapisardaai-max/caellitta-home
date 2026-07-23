@@ -16,6 +16,7 @@ export default function Pulizie() {
   const { activePropertyId } = useActiveProperty()
   const [bookings, setBookings] = useState([])
   const [collaborators, setCollaborators] = useState([])
+  const [units, setUnits] = useState([])
   const [tab, setTab] = useState('da_fare') // da_fare | fatte | da_liquidare
   const [savingId, setSavingId] = useState(null)
 
@@ -36,6 +37,9 @@ export default function Pulizie() {
       .eq('property_id', activePropertyId)
       .eq('active', true)
     setCollaborators(cs || [])
+
+    const { data: u } = await sb.from('property_units').select('id,name').eq('property_id', activePropertyId).eq('active', true)
+    setUnits(u || [])
   }
 
   async function updateBooking(id, patch) {
@@ -130,6 +134,7 @@ export default function Pulizie() {
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem' }}>{b.guest_name}</div>
               <div style={{ fontSize: '.68rem', color: 'var(--salt-faint)' }}>
                 Check-out: {fmtDate(b.check_out)} {b.check_out === todayIso && <strong style={{ color: '#963832' }}> · OGGI</strong>}
+                {b.unit_id && units.find(u => u.id === b.unit_id) && <span style={{ color: 'var(--gold)' }}> · 🚪 {units.find(u => u.id === b.unit_id).name}</span>}
               </div>
             </div>
             {b.cleaning_settled && <span className="badge badge-green">Liquidata</span>}
