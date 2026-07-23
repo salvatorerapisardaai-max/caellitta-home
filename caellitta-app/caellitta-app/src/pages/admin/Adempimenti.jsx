@@ -91,6 +91,15 @@ export default function Adempimenti() {
     await loadAll()
   }
 
+  async function retryIstat(id) {
+    await sb.from('istat_submissions').update({ attempts: 0, status: 'pending', reviewed: true, last_error: null }).eq('id', id)
+    await loadAll()
+  }
+  async function retryAlloggiati(id) {
+    await sb.from('guest_registrations').update({ attempts: 0, status: 'pending', reviewed: true, last_error: null }).eq('id', id)
+    await loadAll()
+  }
+
   function isDeadlineClose(deadline_at, status) {
     if (!deadline_at || status === 'sent') return false
     const hoursLeft = (new Date(deadline_at) - new Date()) / 3_600_000
@@ -113,6 +122,19 @@ export default function Adempimenti() {
       <p style={{ fontSize: '0.75rem', color: 'var(--salt-faint)', marginBottom: '1.5rem' }}>
         Alloggiati Web (Polizia di Stato) e Osservatorio Turistico Sicilia (ISTAT). Ogni invio richiede la tua approvazione prima di partire.
       </p>
+
+      {/* AVVISO CREDENZIALI MANCANTI — l'host deve saperlo subito, non scoprirlo da un errore silenzioso */}
+      {(!cred.istat_struttura_code || !cred.alloggiati_user) && (
+        <div className="card" style={{ marginBottom: '1.5rem', borderColor: 'rgba(156,122,46,.5)', background: 'rgba(156,122,46,.06)' }}>
+          <div style={{ fontSize: '0.8rem', color: 'var(--salt-dim)' }}>
+            ⚠️ {!cred.istat_struttura_code && !cred.alloggiati_user
+              ? 'Nessuna credenziale configurata: gli invii verranno accodati ma non potranno partire finché non inserisci almeno il codice ISTAT o le credenziali Alloggiati Web qui sotto.'
+              : !cred.istat_struttura_code
+                ? 'Manca il codice struttura ISTAT: gli invii a Turist@t resteranno in errore finché non lo inserisci.'
+                : 'Mancano le credenziali Alloggiati Web: gli invii resteranno in errore finché non le inserisci.'}
+          </div>
+        </div>
+      )}
 
       {/* ================= DA APPROVARE — anteprima prima dell'invio ================= */}
       {(istatToApprove.length > 0 || allogToApprove.length > 0) && (
@@ -221,6 +243,7 @@ export default function Adempimenti() {
                   <th style={{ padding: '0.5rem 0.7rem' }}>Stato</th>
                   <th style={{ padding: '0.5rem 0.7rem' }}>Tentativi</th>
                   <th style={{ padding: '0.5rem 0.7rem' }}>Ultimo errore</th>
+                  <th style={{ padding: '0.5rem 0.7rem' }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -232,6 +255,9 @@ export default function Adempimenti() {
                     <td style={{ padding: '0.5rem 0.7rem' }}><Badge status={r.status} /></td>
                     <td style={{ padding: '0.5rem 0.7rem' }}>{r.attempts}</td>
                     <td style={{ padding: '0.5rem 0.7rem', color: 'var(--red)' }}>{r.last_error ? r.last_error.slice(0, 80) : '—'}</td>
+                    <td style={{ padding: '0.5rem 0.7rem' }}>
+                      {r.status === 'error' && <button className="btn-sm" onClick={() => retryIstat(r.id)}>↻ Riprova</button>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -258,6 +284,7 @@ export default function Adempimenti() {
                   <th style={{ padding: '0.5rem 0.7rem' }}>Scadenza</th>
                   <th style={{ padding: '0.5rem 0.7rem' }}>Tentativi</th>
                   <th style={{ padding: '0.5rem 0.7rem' }}>Ricevuta</th>
+                  <th style={{ padding: '0.5rem 0.7rem' }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -274,6 +301,9 @@ export default function Adempimenti() {
                       <td style={{ padding: '0.5rem 0.7rem' }}>{r.attempts}</td>
                       <td style={{ padding: '0.5rem 0.7rem' }}>
                         {r.receipt_storage_path ? <span style={{ color: 'var(--gold)' }}>disponibile</span> : '—'}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.7rem' }}>
+                        {r.status === 'error' && <button className="btn-sm" onClick={() => retryAlloggiati(r.id)}>↻ Riprova</button>}
                       </td>
                     </tr>
                   )
