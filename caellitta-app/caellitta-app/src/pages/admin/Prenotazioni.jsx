@@ -13,7 +13,7 @@ const EMPTY = {
   guest_name: '', guest_email: '', guest_phone: '',
   check_in: '', check_out: '', guests_count: 1,
   amount_total: '', amount_deposit: '', platform: 'Airbnb',
-  status: 'confirmed', payment_status: 'unpaid', notes: '',
+  status: 'confirmed', payment_status: 'unpaid', notes: '', unit_id: '',
   checkin_by: '', checkout_by: '', cleaning_by: '',
   birth_date: '', birth_place: '', gender: '', document_type: '', document_number: '', nationality: ''
 }
@@ -67,10 +67,16 @@ export default function Prenotazioni() {
   const [blockError, setBlockError] = useState('')
   const [collaborators, setCollaborators] = useState([])
   const [otherGuests, setOtherGuests] = useState([])
+  const [units, setUnits] = useState([])
 
   useEffect(() => {
-    if (activePropertyId) { load(); loadBlocked(); loadCollaborators() }
+    if (activePropertyId) { load(); loadBlocked(); loadCollaborators(); loadUnits() }
   }, [activePropertyId])
+
+  async function loadUnits() {
+    const { data } = await sb.from('property_units').select('*').eq('property_id', activePropertyId).eq('active', true).order('sort_order')
+    setUnits(data || [])
+  }
 
   async function load() {
     const { data, error } = await sb.from('bookings').select('*').eq('property_id', activePropertyId).order('check_in', { ascending: false })
@@ -133,6 +139,7 @@ export default function Prenotazioni() {
       status:       b.status       || 'confirmed',
       payment_status: b.payment_status || 'unpaid',
       notes:        b.notes        || '',
+      unit_id:      b.unit_id      || '',
       checkin_by:   b.checkin_by   || '',
       checkout_by:  b.checkout_by  || '',
       cleaning_by:  b.cleaning_by  || '',
@@ -249,6 +256,7 @@ export default function Prenotazioni() {
       status:       form.status,
       payment_status: form.payment_status,
       notes:        form.notes,
+      unit_id:      form.unit_id || null,
       checkin_by:   form.checkin_by || null,
       checkout_by:  form.checkout_by || null,
       cleaning_by:  form.cleaning_by || null,
@@ -322,6 +330,7 @@ export default function Prenotazioni() {
   })
   const filtered = filterStatus === 'all' ? bySearch : bySearch.filter(b => b.status === filterStatus)
   const collabById = Object.fromEntries(collaborators.map(c => [c.id, c]))
+  const unitById = Object.fromEntries(units.map(u => [u.id, u]))
   const f = form
 
   const blockedGroups = groupConsecutiveBlocks(blockedDates)
@@ -415,6 +424,9 @@ export default function Prenotazioni() {
           <div className="pren-card-meta">
             <span>📥 {fmtDate(b.check_in)} → 📤 {fmtDate(b.check_out)} · {b.nights ?? '—'} notti</span>
             <span>👤 {b.guests_count} · {b.platform}</span>
+            {b.unit_id && unitById[b.unit_id] && (
+              <span style={{ color: 'var(--gold)' }}>🚪 {unitById[b.unit_id].name}</span>
+            )}
             <span style={{ color: 'var(--gold)', fontFamily: "'Cormorant Garamond',serif", fontSize: '0.95rem' }}>€{b.amount_total}</span>
             <span className={`badge ${STATUSES[b.status] || 'badge-gray'}`}>
               {STATUS_LABELS[b.status] || b.status}
@@ -556,6 +568,15 @@ export default function Prenotazioni() {
               {PLATFORMS.map(pl => <option key={pl}>{pl}</option>)}
             </select>
           </div>
+          {units.length > 0 && (
+            <div className="form-group">
+              <label className="form-label">Camera</label>
+              <select className="form-select" value={f.unit_id} onChange={e => setForm(p => ({ ...p, unit_id: e.target.value }))}>
+                <option value="">— Intera struttura / non specificata —</option>
+                {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            </div>
+          )}
           <div className="form-group">
             <label className="form-label">Stato pagamento</label>
             <select className="form-select" value={f.payment_status} onChange={e => setForm(p => ({ ...p, payment_status: e.target.value }))}>
