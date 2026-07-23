@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { sb } from '../../lib/supabase'
 import Modal from '../../components/Modal'
+import { useActiveProperty } from '../../lib/PropertyContext'
 
 const EMPTY_PARTNER = { partner: '', title: '', title_en: '', discount: '', description: '', description_en: '', category_id: '', commission_pct: 10, active: true }
 const EMPTY_ASSIGN  = { booking_id: '', template_ids: [], amounts: {} }
 
 export default function Convenzioni() {
+  const { activePropertyId } = useActiveProperty()
   const [templates, setTemplates] = useState([])
   const [categories, setCategories] = useState([])
   const [bookings,  setBookings]  = useState([])
@@ -19,27 +21,29 @@ export default function Convenzioni() {
   const [saving,   setSaving]     = useState(false)
   const [saveError,setSaveError]  = useState('')
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { if (activePropertyId) load() }, [activePropertyId])
 
   async function load() {
     setLoadError('')
     try {
-      const { data: t, error: e1 } = await sb.from('coupon_templates').select('*').order('partner')
+      const { data: t, error: e1 } = await sb.from('coupon_templates').select('*').eq('property_id', activePropertyId).order('partner')
       if (e1) throw new Error('Templates: ' + e1.message)
 
       const { data: b, error: e2 } = await sb.from('bookings')
         .select('id,code,guest_name,check_in,status')
+        .eq('property_id', activePropertyId)
         .neq('status','cancelled').order('check_in', { ascending: false })
       if (e2) throw new Error('Bookings: ' + e2.message)
 
       // amount_paid/commission/commission_settled: importo esperienza e commissione dovuta
-      // dal partner a noi — dati interni, mai esposti nel portale ospite (guest_coupons.notes
-      // e coupon_templates.commission_pct idem, restano solo qui nel gestionale)
+      // dal partner a noi — dati interni, mai esposti nel portale ospite. Filtrato per
+      // struttura tramite le prenotazioni collegate (guest_coupons non ha property_id diretto).
       const { data: gc, error: e3 } = await sb.from('guest_coupons')
-        .select('id, booking_id, template_id, code, status, used_at, amount_paid, commission, commission_settled, commission_settled_at, notes, bookings(guest_name,code), coupon_templates(title,partner,commission_pct)')
+        .select('id, booking_id, template_id, code, status, used_at, amount_paid, commission, commission_settled, commission_settled_at, notes, bookings!inner(guest_name,code,property_id), coupon_templates(title,partner,commission_pct)')
+        .eq('bookings.property_id', activePropertyId)
       if (e3) throw new Error('Coupons: ' + e3.message)
 
-      const { data: cat, error: e4 } = await sb.from('coupon_categories').select('*').order('name')
+      const { data: cat, error: e4 } = await sb.from('coupon_categories').select('*').eq('property_id', activePropertyId).order('name')
       if (e4) throw new Error('Categorie: ' + e4.message)
 
       setTemplates(t || [])
@@ -86,7 +90,7 @@ export default function Convenzioni() {
         const { error } = await sb.from('coupon_templates').update(payload).eq('id', editing)
         if (error) throw error
       } else {
-        const { error } = await sb.from('coupon_templates').insert(payload)
+        const { error } = await sb.from('coupon_templates').insert({ ...payload, property_id: activePropertyId })
         if (error) throw error
       }
       await load(); setModalP(false); setEditing(null)
@@ -169,7 +173,7 @@ export default function Convenzioni() {
   return (
     <div>
       {loadError && (
-        <div style={{ background:'rgba(138,72,72,.15)', border:'1px solid rgba(138,72,72,.4)', padding:'0.75rem 1rem', marginBottom:'1rem', fontSize:'0.78rem', color:'#e08080' }}>
+        <div style={{ background:'rgba(168,69,63,.12)', border:'1px solid rgba(168,69,63,.4)', padding:'0.75rem 1rem', marginBottom:'1rem', fontSize:'0.78rem', color:'var(--red)' }}>
           Errore caricamento: {loadError}
         </div>
       )}
@@ -188,8 +192,8 @@ export default function Convenzioni() {
             {partner}
           </div>
           {items.map(t => (
-            <div key={t.id} style={{ display:'flex', background:'var(--lava-card)', border:`1px solid ${t.active ? 'var(--gold-dim)' : 'rgba(90,90,90,.2)'}`, marginBottom:'0.5rem', overflow:'hidden', opacity: t.active ? 1 : 0.5 }}>
-              <div style={{ width:3, background: t.active ? 'var(--gold)' : '#555', flexShrink:0 }} />
+            <div key={t.id} style={{ display:'flex', background:'var(--lava-card)', border:`1px solid ${t.active ? 'var(--gold-dim2)' : 'rgba(90,90,90,.2)'}`, marginBottom:'0.5rem', overflow:'hidden', opacity: t.active ? 1 : 0.5 }}>
+              <div style={{ width:3, background: t.active ? 'var(--gold)' : '#999', flexShrink:0 }} />
               <div style={{ padding:'1rem 1.2rem', flex:1, minWidth:0 }}>
                 {/* Riga 1: titolo + descrizione a sinistra, azioni a destra */}
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'0.8rem' }}>
@@ -218,7 +222,7 @@ export default function Convenzioni() {
                 )}
 
                 {gCoupons.filter(gc => gc.template_id === t.id && gc.status === 'available').length > 0 && (
-                  <div style={{ marginTop:'0.8rem', paddingTop:'0.8rem', borderTop:'1px solid var(--gold-dim)' }}>
+                  <div style={{ marginTop:'0.8rem', paddingTop:'0.8rem', borderTop:'1px solid var(--gold-dim2)' }}>
                     <div style={{ fontSize:'0.55rem', letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--salt-faint)', marginBottom:'0.4rem' }}>Assegnato a</div>
                     <div style={{ display:'flex', flexWrap:'wrap', gap:'0.4rem' }}>
                       {gCoupons.filter(gc => gc.template_id === t.id && gc.status === 'available').map(gc => (
@@ -253,7 +257,7 @@ export default function Convenzioni() {
 
       {/* MODAL NUOVA/MODIFICA */}
       <Modal open={modalPartner} onClose={() => setModalP(false)} title={editing ? 'Modifica convenzione' : 'Nuova convenzione'}>
-        {saveError && <div style={{ background:'rgba(138,72,72,.15)', border:'1px solid rgba(138,72,72,.4)', padding:'0.75rem 1rem', marginBottom:'1rem', fontSize:'0.78rem', color:'#e08080' }}>{saveError}</div>}
+        {saveError && <div style={{ background:'rgba(168,69,63,.12)', border:'1px solid rgba(168,69,63,.4)', padding:'0.75rem 1rem', marginBottom:'1rem', fontSize:'0.78rem', color:'var(--red)' }}>{saveError}</div>}
         <div className="form-group">
           <label className="form-label">Partner / locale *</label>
           <input className="form-input" value={form.partner} onChange={e=>setForm(p=>({...p,partner:e.target.value}))} placeholder="Es. Ristorante La Scogliera" />
@@ -279,11 +283,11 @@ export default function Convenzioni() {
         </div>
         <div className="form-group">
           <label className="form-label">Descrizione per l'ospite</label>
-          <textarea className="form-textarea" value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder="Presentati come ospite Caellitta e ricevi..." />
+          <textarea className="form-textarea" value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder="Presentati come ospite e ricevi..." />
         </div>
         <div className="form-group">
           <label className="form-label">Descrizione per l'ospite (EN)</label>
-          <textarea className="form-textarea" value={form.description_en} onChange={e=>setForm(p=>({...p,description_en:e.target.value}))} placeholder="Show your Caellitta guest status and get..." />
+          <textarea className="form-textarea" value={form.description_en} onChange={e=>setForm(p=>({...p,description_en:e.target.value}))} placeholder="Show your guest status and get..." />
         </div>
         <div className="form-group">
           <label className="form-label">Commissione partner (%) — quanto ci deve il partner per esperienza, mai visibile all'ospite</label>
@@ -303,7 +307,7 @@ export default function Convenzioni() {
 
       {/* MODAL ASSEGNA */}
       <Modal open={modalAssign} onClose={() => setModalA(false)} title="Assegna coupon" subtitle="Scegli la prenotazione e i coupon da assegnare">
-        {saveError && <div style={{ background:'rgba(138,72,72,.15)', border:'1px solid rgba(138,72,72,.4)', padding:'0.75rem 1rem', marginBottom:'1rem', fontSize:'0.78rem', color:'#e08080' }}>{saveError}</div>}
+        {saveError && <div style={{ background:'rgba(168,69,63,.12)', border:'1px solid rgba(168,69,63,.4)', padding:'0.75rem 1rem', marginBottom:'1rem', fontSize:'0.78rem', color:'var(--red)' }}>{saveError}</div>}
         <div className="form-group">
           <label className="form-label">Prenotazione</label>
           <select className="form-select" value={assign.booking_id} onChange={e=>setAssign(p=>({...p,booking_id:e.target.value}))}>
@@ -322,7 +326,7 @@ export default function Convenzioni() {
                 : null
               return (
                 <div key={t.id}>
-                  <label style={{ display:'flex', alignItems:'center', gap:'0.8rem', cursor:'pointer', padding:'0.6rem 0.8rem', background: checked ? 'rgba(201,171,114,.08)' : 'var(--lava-card)', border:`1px solid ${checked ? 'var(--gold-dim2)' : 'var(--gold-dim)'}`, transition:'all .2s' }}>
+                  <label style={{ display:'flex', alignItems:'center', gap:'0.8rem', cursor:'pointer', padding:'0.6rem 0.8rem', background: checked ? 'rgba(156,122,60,.08)' : 'var(--lava-card)', border:`1px solid ${checked ? 'var(--gold-dim2)' : 'rgba(156,122,60,.2)'}`, transition:'all .2s' }}>
                     <input type="checkbox" checked={checked} onChange={() => toggleTemplate(t.id)} style={{ accentColor:'var(--gold)' }} />
                     <span style={{ flex:1, fontSize:'0.8rem', color:'var(--salt-dim)' }}>{t.partner} — {t.title}</span>
                     <span style={{ fontSize:'0.75rem', color:'var(--gold)', fontFamily:"'Cormorant Garamond',serif", textAlign:'right' }}>{t.discount}</span>
@@ -370,11 +374,11 @@ function CouponRow({ gc, onSaveAmount, onToggleSettled }) {
   const hasAmount = gc.amount_paid != null
 
   return (
-    <div style={{ background:'var(--lava-card)', border:'1px solid var(--gold-dim)', padding:'0.75rem 1rem', marginBottom:'0.4rem' }}>
+    <div style={{ background:'var(--lava-card)', border:'1px solid var(--gold-dim2)', padding:'0.75rem 1rem', marginBottom:'0.4rem' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'0.5rem', flexWrap:'wrap' }}>
         <div>
           <div style={{ fontSize:'0.8rem', color:'var(--salt-dim)' }}>{gc.bookings?.guest_name}</div>
-          <div style={{ fontFamily:'monospace', fontSize:'0.6rem', color:'rgba(201,171,114,.45)' }}>{gc.bookings?.code}</div>
+          <div style={{ fontFamily:'monospace', fontSize:'0.6rem', color:'rgba(156,122,60,.6)' }}>{gc.bookings?.code}</div>
         </div>
         <div style={{ fontSize:'0.75rem', color:'var(--salt-dim)' }}>{gc.coupon_templates?.title}</div>
         <div style={{ fontFamily:'monospace', fontSize:'0.65rem', color:'var(--gold)' }}>{gc.code}</div>
@@ -383,7 +387,7 @@ function CouponRow({ gc, onSaveAmount, onToggleSettled }) {
         </span>
       </div>
 
-      <div style={{ marginTop:'0.6rem', paddingTop:'0.6rem', borderTop:'1px dashed var(--gold-dim)', display:'flex', alignItems:'center', gap:'0.7rem', flexWrap:'wrap' }}>
+      <div style={{ marginTop:'0.6rem', paddingTop:'0.6rem', borderTop:'1px dashed var(--gold-dim2)', display:'flex', alignItems:'center', gap:'0.7rem', flexWrap:'wrap' }}>
         <span style={{ fontSize:'0.55rem', letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--salt-faint)' }}>🔒 Solo noi</span>
         {editing ? (
           <>
