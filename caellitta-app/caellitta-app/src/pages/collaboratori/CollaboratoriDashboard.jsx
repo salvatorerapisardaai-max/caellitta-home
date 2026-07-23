@@ -245,7 +245,7 @@ export default function CollaboratoriDashboard() {
             {['it', 'en'].map(l => (
               <button key={l} onClick={() => setLang(l)} style={{
                 background: 'none', border: `1px solid ${lang === l ? 'rgba(201,171,114,0.5)' : 'rgba(201,171,114,0.15)'}`,
-                color: lang === l ? 'var(--gold)' : 'rgba(240,235,225,0.3)',
+                color: lang === l ? 'var(--gold)' : 'var(--salt-faint)',
                 fontSize: '0.6rem', letterSpacing: '0.2em', textTransform: 'uppercase',
                 padding: '0.25rem 0.6rem', cursor: 'pointer',
               }}>
@@ -330,7 +330,7 @@ export default function CollaboratoriDashboard() {
           </div>
         )}
 
-        {error && <div style={{ color: '#963832', fontSize: '0.8rem', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
+        {error && <div style={{ color: 'var(--red)', fontSize: '0.8rem', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
         {!rows && !error && <div style={{ color: 'var(--salt-faint)', fontSize: '0.8rem', textAlign: 'center' }}>Caricamento…</div>}
 
         {rows && months.map(({ year, month }, i) => (
@@ -366,7 +366,7 @@ export default function CollaboratoriDashboard() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontFamily: "'Cormorant Garamond',serif", color: 'var(--gold)' }}>€{b.amount_total}</div>
-                    <div style={{ fontSize: '0.6rem', color: b.commission_settled ? 'var(--salt-faint)' : '#963832' }}>
+                    <div style={{ fontSize: '0.6rem', color: b.commission_settled ? 'var(--salt-faint)' : 'var(--red)' }}>
                       {t.commission} {b.commission_pct}% = €{b.commission_due?.toFixed(2)} {b.commission_settled ? '✓' : ''}
                     </div>
                   </div>
@@ -381,7 +381,7 @@ export default function CollaboratoriDashboard() {
       <Modal open={modal} onClose={() => setModal(false)} title={t.newBooking}>
         {confirmation ? (
           <div>
-            <p style={{ fontSize: '0.9rem', color: '#2f6b46', marginBottom: '1rem' }}>✓ {t.created}</p>
+            <p style={{ fontSize: '0.9rem', color: 'var(--green)', marginBottom: '1rem' }}>✓ {t.created}</p>
             <p style={{ fontSize: '0.85rem', color: 'var(--salt-dim)', marginBottom: '0.4rem' }}>{t.code}: <strong style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{confirmation.code}</strong></p>
             <p style={{ fontSize: '0.85rem', color: 'var(--salt-dim)', marginBottom: '1.2rem' }}>
               {t.commissionDue}: {confirmation.commission_pct}% = €{confirmation.commission_due?.toFixed(2)}
@@ -391,7 +391,7 @@ export default function CollaboratoriDashboard() {
         ) : (
           <>
             {saveError && (
-              <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#963832', lineHeight: 1.6 }}>
+              <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: 'var(--red)', lineHeight: 1.6 }}>
                 {saveError}
               </div>
             )}
@@ -442,7 +442,7 @@ export default function CollaboratoriDashboard() {
       <Modal open={blockModal} onClose={() => setBlockModal(false)} title={t.blockDates}>
         {blockConfirmation !== null ? (
           <div>
-            <p style={{ fontSize: '0.9rem', color: '#2f6b46', marginBottom: '1.2rem' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--green)', marginBottom: '1.2rem' }}>
               ✓ {t.blockDone}: {blockConfirmation} {t.blockCount}
             </p>
             <button className="btn-primary" style={{ width: '100%' }} onClick={() => setBlockModal(false)}>{t.close}</button>
@@ -450,7 +450,7 @@ export default function CollaboratoriDashboard() {
         ) : (
           <>
             {blockError && (
-              <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#963832', lineHeight: 1.6 }}>
+              <div style={{ background: 'rgba(138,72,72,.15)', border: '1px solid rgba(138,72,72,.4)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.78rem', color: 'var(--red)', lineHeight: 1.6 }}>
                 {blockError}
               </div>
             )}
@@ -485,7 +485,7 @@ export default function CollaboratoriDashboard() {
 // (amount è già null lato server se il compito non è mio — nessuna informazione di altri esposta)
 function TaskDone({ label, icon, byName, amount, settled, t }) {
   return (
-    <span style={{ fontSize: '0.62rem', color: '#2f6b46', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+    <span style={{ fontSize: '0.62rem', color: 'var(--green)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
       {icon} {label}: {byName}
       {amount != null && (
         <span style={{ color: settled ? 'var(--salt-faint)' : 'var(--gold)', fontWeight: 600 }}>
