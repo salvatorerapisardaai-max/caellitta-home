@@ -8,19 +8,49 @@ import heroFallback from '../../assets/acicastello.jpg'
 // quella ha priorità; altrimenti si usa la convenzione fissa "benvenuto.jpg", poi il fallback locale.
 const HERO_URL_DEFAULT = 'https://ejjatrfeeatgiqpomibd.supabase.co/storage/v1/object/public/site-media/benvenuto.jpg'
 
-// Numero WhatsApp principale di Caellitta Home (solo cifre, per i link wa.me)
-const CAELLITTA_WA = '393520124403'
 
-// Tema del Welcome Book: indipendente dal tema (chiaro) del gestionale.
-// Applicato come override locale delle CSS custom properties sul contenitore
-// radice — così il gestionale può essere chiaro mentre il Welcome Book resta
-// nella sua estetica calda "notte mediterranea", senza conflitti.
-const WB_THEME = {
-  '--lava': '#111009', '--lava-mid': '#1c1710', '--lava-card': '#221d14', '--lava-hover': '#2a2418',
-  '--gold': '#c9ab72', '--gold-light': '#e8d0a0', '--gold-dim': 'rgba(201,171,114,0.12)', '--gold-dim2': 'rgba(201,171,114,0.22)',
-  '--salt': '#f0ebe1', '--salt-dim': 'rgba(240,235,225,0.58)', '--salt-faint': 'rgba(240,235,225,0.26)',
-  '--green': '#4a8a68', '--green-dim': 'rgba(74,138,104,0.15)',
-  '--red': '#8a4848', '--red-dim': 'rgba(138,72,72,0.15)',
+// Converte un colore esadecimale in "r,g,b" per costruire rgba(...) dinamicamente
+function hexToRgbTriplet(hex) {
+  if (!hex) return '0,0,0'
+  const h = hex.replace('#', '')
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h
+  const num = parseInt(full, 16)
+  if (isNaN(num)) return '0,0,0'
+  return `${(num >> 16) & 255},${(num >> 8) & 255},${num & 255}`
+}
+
+// Schiarisce/scurisce un colore esadecimale di una percentuale (positivo = più chiaro)
+function shade(hex, percent) {
+  if (!hex) return hex
+  const h = hex.replace('#', '')
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h
+  const num = parseInt(full, 16)
+  if (isNaN(num)) return hex
+  const clamp = v => Math.max(0, Math.min(255, v))
+  const r = clamp(((num >> 16) & 255) + Math.round(255 * percent))
+  const g = clamp(((num >> 8) & 255) + Math.round(255 * percent))
+  const b = clamp((num & 255) + Math.round(255 * percent))
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+}
+
+// Costruisce il tema del Welcome Book: se l'host ha personalizzato i colori in
+// Portale Ospiti (guest_portal_content.theme_*) li usa, altrimenti i default
+// dell'estetica originale — indipendente dal tema (chiaro) del gestionale.
+function buildWbTheme(content) {
+  const bg = content?.theme_bg || '#111009'
+  const card = content?.theme_card || '#221d14'
+  const accent = content?.theme_accent || '#c9ab72'
+  const text = content?.theme_text || '#f0ebe1'
+  const accentRgb = hexToRgbTriplet(accent)
+  const textRgb = hexToRgbTriplet(text)
+  return {
+    '--lava': bg, '--lava-mid': shade(bg, 0.04), '--lava-card': card, '--lava-hover': shade(card, 0.04),
+    '--gold': accent, '--gold-light': shade(accent, 0.15),
+    '--gold-dim': `rgba(${accentRgb},0.12)`, '--gold-dim2': `rgba(${accentRgb},0.22)`,
+    '--salt': text, '--salt-dim': `rgba(${textRgb},0.58)`, '--salt-faint': `rgba(${textRgb},0.26)`,
+    '--green': '#4a8a68', '--green-dim': 'rgba(74,138,104,0.15)',
+    '--red': '#8a4848', '--red-dim': 'rgba(138,72,72,0.15)',
+  }
 }
 const WIFI_SSID_DEFAULT = 'VodafoneCaellita Home'
 const WIFI_PASSWORD_DEFAULT = 'rJT9HdAP2F4Asp96'
@@ -99,7 +129,7 @@ export default function WelcomeBook() {
   const co = new Date(booking.check_out).toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
-    <div style={{ ...WB_THEME, minHeight: '100vh', background: 'var(--lava)', paddingBottom: 80, position: 'relative' }}>
+    <div style={{ ...buildWbTheme(content), minHeight: '100vh', background: 'var(--lava)', paddingBottom: 80, position: 'relative' }}>
       <div style={{ position: 'fixed', top: 0, left: 0, height: 2, background: 'var(--gold)', zIndex: 8000, width: '30%' }} />
 
       {/* Lang switch — top right */}
@@ -122,9 +152,10 @@ export default function WelcomeBook() {
         {chapter === 'casa'       && <ChCasa lang={lang} items={content?.casa_items} />}
         {chapter === 'dintorni'   && <ChDintorni lang={lang} items={content?.dintorni_items} />}
         {chapter === 'regole'     && <ChRegole lang={lang} items={content?.regole_items} />}
-        {chapter === 'esperienze' && <ChEsperienze lang={lang} propertyId={booking.property_id} />}
+        {chapter === 'esperienze' && <ChEsperienze lang={lang} propertyId={booking.property_id} propertyName={booking.property_name}
+          waNumber={(content?.contacts_items || []).find(c => c.is_whatsapp)?.phone?.replace(/[^\d]/g, '')} />}
         {chapter === 'coupon'     && <ChCoupon coupons={coupons} useCoupon={useCoupon} lang={lang} />}
-        {chapter === 'contatti'   && <ChContatti lang={lang} />}
+        {chapter === 'contatti'   && <ChContatti lang={lang} propertyName={booking.property_name} items={content?.contacts_items} emergencyItems={content?.emergency_items} />}
       </div>
 
       {/* BOTTOM NAV */}
@@ -173,8 +204,8 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang, content }) 
   const wifiSsid = content?.wifi_ssid || WIFI_SSID_DEFAULT
   const wifiPassword = content?.wifi_password || WIFI_PASSWORD_DEFAULT
   const welcomeText = it
-    ? (content?.welcome_text_it || 'Siamo felici di accoglierti personalmente e consegnarti le chiavi. Caellitta Home è nata per essere vissuta — non solo abitata. Il mare sotto, il castello di lava alle spalle, il profumo di zagara nell\'aria. Questo spazio è tuo.')
-    : (content?.welcome_text_en || 'We will be happy to welcome you personally and hand you the keys. Caellitta Home was built to be lived — not just occupied. The sea below, the lava castle behind you, the scent of orange blossom in the air. This space is yours.')
+    ? (content?.welcome_text_it || 'Siamo felici di accoglierti personalmente e consegnarti le chiavi. Questa casa è nata per essere vissuta — non solo abitata.')
+    : (content?.welcome_text_en || 'We will be happy to welcome you personally and hand you the keys. This home was built to be lived — not just occupied.')
 
   return (
     <div>
@@ -187,7 +218,7 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang, content }) 
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
         />
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.96) 0%,rgba(19,16,14,.2) 100%)' }} />
-        <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>Caellitta Home · Aci Castello</p>
+        <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>{booking.property_name || (it ? 'La tua struttura' : 'Your stay')}</p>
         <h1 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(2rem,9vw,2.8rem)', fontWeight: 300, lineHeight: 1.05 }}>
           {it ? <>Benvenuto<br/><em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>a casa tua.</em></> : <>Welcome<br/><em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>to your home.</em></>}
         </h1>
@@ -399,7 +430,7 @@ function ChRegole({ lang, items }) {
 // Data-driven: legge le convenzioni attive da Supabase (coupon_templates),
 // le stesse che gestisci nel gestionale → sempre allineate.
 
-function ChEsperienze({ lang, propertyId }) {
+function ChEsperienze({ lang, propertyId, propertyName, waNumber }) {
   const it = lang === 'it'
   const [cats, setCats]       = useState([])
   const [loading, setLoading] = useState(true)
@@ -432,9 +463,9 @@ function ChEsperienze({ lang, propertyId }) {
 
   const waLink = (title) => {
     const msg = it
-      ? `Ciao! Sono ospite di Caellitta Home e vorrei informazioni sull'esperienza: ${title}`
-      : `Hello! I'm a Caellitta Home guest and I'd like information about this experience: ${title}`
-    return `https://wa.me/${CAELLITTA_WA}?text=${encodeURIComponent(msg)}`
+      ? `Ciao! Sono ospite di ${propertyName || 'questa struttura'} e vorrei informazioni sull'esperienza: ${title}`
+      : `Hello! I'm a guest at ${propertyName || 'this property'} and I'd like information about this experience: ${title}`
+    return waNumber ? `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}` : null
   }
 
   return (
@@ -481,9 +512,11 @@ function ChEsperienze({ lang, propertyId }) {
                     {desc && (
                       <div style={{ fontSize: '0.76rem', color: 'var(--salt-dim)', lineHeight: 1.72, fontWeight: 200 }}>{desc}</div>
                     )}
-                    <a href={waLink(title)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: '0.85rem', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--lava)', background: 'var(--gold)', textDecoration: 'none', padding: '0.4rem 0.9rem' }}>
-                      {it ? 'Prenota via WhatsApp →' : 'Book via WhatsApp →'}
-                    </a>
+                    {waNumber && (
+                      <a href={waLink(title)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: '0.85rem', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--lava)', background: 'var(--gold)', textDecoration: 'none', padding: '0.4rem 0.9rem' }}>
+                        {it ? 'Prenota via WhatsApp →' : 'Book via WhatsApp →'}
+                      </a>
+                    )}
                   </div>
                 </div>
               )
@@ -568,48 +601,27 @@ function ChCoupon({ coupons, useCoupon, lang }) {
 
 // ── CONTATTI ──────────────────────────────────────────────
 
-function ChContatti({ lang }) {
+const CONTACTS_DEFAULT = []
+const EMERGENCY_DEFAULT = [
+  { icon: '🚑', name_it: 'Emergenze', name_en: 'Emergency', num: '118' },
+  { icon: '🚒', name_it: 'Vigili del fuoco', name_en: 'Fire brigade', num: '115' },
+  { icon: '🚓', name_it: 'Carabinieri', name_en: 'Police', num: '112' },
+]
+const AVATAR_ICON = { chat: '💬', person: '👤' }
+
+function ChContatti({ lang, propertyName, items, emergencyItems }) {
   const it = lang === 'it'
+  const contacts = (items && items.length > 0) ? items : CONTACTS_DEFAULT
+  const emergency = (emergencyItems && emergencyItems.length > 0) ? emergencyItems : EMERGENCY_DEFAULT
 
-  const contacts = [
-    {
-      avatar: '💬',
-      nameIt: 'Caellitta Home',
-      nameEn: 'Caellitta Home',
-      roleIt: 'WhatsApp · Contatto principale',
-      roleEn: 'WhatsApp · Main contact',
-      num: '+39 352 0124403',
-      link: `https://wa.me/${CAELLITTA_WA}?text=${encodeURIComponent(it ? 'Ciao! Scrivo da Caellitta Home.' : 'Hello! Writing from Caellitta Home.')}`,
-      action: 'WhatsApp',
-    },
-    {
-      avatar: '👤',
-      nameIt: 'Salvatore',
-      nameEn: 'Salvatore',
-      roleIt: 'Host',
-      roleEn: 'Host',
-      num: '+39 327 931 2378',
-      link: 'tel:+393279312378',
-      action: it ? 'Chiama' : 'Call',
-    },
-    {
-      avatar: '👤',
-      nameIt: 'Rosario',
-      nameEn: 'Rosario',
-      roleIt: 'Host',
-      roleEn: 'Host',
-      num: '+39 379 144 5274',
-      link: 'tel:+393791445274',
-      action: it ? 'Chiama' : 'Call',
-    },
-  ]
-
-  const emergency = [
-    { icon: '🚑', nameIt: 'Emergenze', nameEn: 'Emergency', num: '118' },
-    { icon: '🚒', nameIt: 'Vigili del fuoco', nameEn: 'Fire brigade', num: '115' },
-    { icon: '🚓', nameIt: 'Carabinieri', nameEn: 'Police', num: '112' },
-    { icon: '🏥', nameIt: 'Pronto soccorso', nameEn: 'A&E', num: '095 7261111' },
-  ]
+  function contactLink(c) {
+    const digits = (c.phone || '').replace(/[^\d+]/g, '').replace(/^\+/, '')
+    if (c.is_whatsapp) {
+      const msg = it ? `Ciao! Scrivo da ${propertyName || 'qui'}.` : `Hello! Writing from ${propertyName || 'here'}.`
+      return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
+    }
+    return `tel:+${digits}`
+  }
 
   return (
     <div>
@@ -626,18 +638,23 @@ function ChContatti({ lang }) {
       <div style={{ padding: '0 1.5rem' }}>
         <div style={{ width: 28, height: 1, background: 'var(--gold)', opacity: .55, margin: '1.5rem 0' }} />
 
-        {contacts.map(c => (
-          <div key={c.nameIt} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '1.2rem 1.3rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+        {contacts.length === 0 && (
+          <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)', marginBottom: '1rem' }}>
+            {it ? 'Contatti non ancora configurati.' : 'Contacts not yet configured.'}
+          </p>
+        )}
+        {contacts.map((c, idx) => (
+          <div key={idx} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '1.2rem 1.3rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
             <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(201,171,114,.09)', border: '1px solid rgba(201,171,114,.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
-              {c.avatar}
+              {AVATAR_ICON[c.avatar] || '👤'}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem' }}>{it ? c.nameIt : c.nameEn}</div>
-              <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)', marginTop: '0.1rem' }}>{it ? c.roleIt : c.roleEn}</div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--gold)', marginTop: '0.3rem', fontFamily: 'monospace' }}>{c.num}</div>
+              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem' }}>{c.name || propertyName || '—'}</div>
+              <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)', marginTop: '0.1rem' }}>{it ? c.role_it : c.role_en}</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--gold)', marginTop: '0.3rem', fontFamily: 'monospace' }}>{c.phone}</div>
             </div>
-            <a href={c.link} target="_blank" rel="noopener noreferrer" style={{ background: 'rgba(201,171,114,.08)', border: '1px solid rgba(201,171,114,.25)', color: 'var(--gold)', padding: '0.5rem 0.9rem', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-              {c.action}
+            <a href={contactLink(c)} target="_blank" rel="noopener noreferrer" style={{ background: 'rgba(201,171,114,.08)', border: '1px solid rgba(201,171,114,.25)', color: 'var(--gold)', padding: '0.5rem 0.9rem', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+              {c.is_whatsapp ? 'WhatsApp' : (it ? 'Chiama' : 'Call')}
             </a>
           </div>
         ))}
@@ -646,10 +663,10 @@ function ChContatti({ lang }) {
           {it ? 'Numeri di emergenza' : 'Emergency numbers'}
         </span>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
-          {emergency.map(e => (
-            <div key={e.nameIt} style={{ background: 'rgba(140,74,74,.08)', border: '1px solid rgba(140,74,74,.22)', padding: '1rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.3rem', marginBottom: '0.4rem' }}>{e.icon}</div>
-              <div style={{ fontSize: '0.68rem', fontWeight: 300, color: 'rgba(240,235,225,.7)', marginBottom: '0.25rem' }}>{it ? e.nameIt : e.nameEn}</div>
+          {emergency.map((e, idx) => (
+            <div key={idx} style={{ background: 'rgba(140,74,74,.08)', border: '1px solid rgba(140,74,74,.22)', padding: '1rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.3rem', marginBottom: '0.4rem' }}>{ICON_MAP[e.icon] || '📞'}</div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 300, color: 'rgba(240,235,225,.7)', marginBottom: '0.25rem' }}>{it ? e.name_it : e.name_en}</div>
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.1rem', color: '#e08080' }}>{e.num}</div>
             </div>
           ))}
@@ -658,3 +675,5 @@ function ChContatti({ lang }) {
     </div>
   )
 }
+
+const ICON_MAP = { medical: '🚑', fire: '🚒', police: '🚓', hospital: '🏥' }
