@@ -93,9 +93,9 @@ export default function CheckIn() {
 
       <div className="ci-kpi">
         <MiniKpi label="Da fare" value={daFare.length} color="var(--gold)" />
-        <MiniKpi label="Fatti da liquidare" value={daLiquidare.length} color="#8a6a1f" />
-        <MiniKpi label="Totale da liquidare" value={`€${totaleDaLiquidare.toFixed(2)}`} color="#963832" />
-        <MiniKpi label="Liquidati" value={liquidate.length} color="#2f6b46" />
+        <MiniKpi label="Fatti da liquidare" value={daLiquidare.length} color="var(--amber)" />
+        <MiniKpi label="Totale da liquidare" value={`€${totaleDaLiquidare.toFixed(2)}`} color="var(--red)" />
+        <MiniKpi label="Liquidati" value={liquidate.length} color="var(--green)" />
       </div>
 
       <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1rem' }}>
@@ -118,7 +118,7 @@ export default function CheckIn() {
             <div>
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem' }}>{b.guest_name}</div>
               <div style={{ fontSize: '.68rem', color: 'var(--salt-faint)' }}>
-                {kind === 'checkin' ? 'Check-in' : 'Check-out'}: {fmtDate(b[byField.date])} {b[byField.date] === todayIso && <strong style={{ color: '#963832' }}> · OGGI</strong>}
+                {kind === 'checkin' ? 'Check-in' : 'Check-out'}: {fmtDate(b[byField.date])} {b[byField.date] === todayIso && <strong style={{ color: 'var(--red)' }}> · OGGI</strong>}
                 {b.unit_id && units.find(u => u.id === b.unit_id) && <span style={{ color: 'var(--gold)' }}> · 🚪 {units.find(u => u.id === b.unit_id).name}</span>}
               </div>
             </div>
