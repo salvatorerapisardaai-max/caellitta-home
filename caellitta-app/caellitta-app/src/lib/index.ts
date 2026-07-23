@@ -1,202 +1,295 @@
 // ============================================================================
-// Edge Function: istat-sicilia
-// Processore della coda `istat_submissions` verso l'Osservatorio Turistico
-// della Regione Sicilia (Turist@t).
+// Edge Function: alloggiati-web
+// Processa la coda `guest_registrations` verso il Web Service SOAP di
+// Alloggiati Web (Polizia di Stato) — invio schedine alloggiati.
 //
-// Architettura: legge le righe pending, per ognuna costruisce il payload,
-// autentica, invia via HTTPS POST, aggiorna stato/tentativi/risposta.
-// Un fallimento su una riga NON blocca le altre. Retry idempotente garantito
-// dal vincolo unique (property_id, booking_id, submission_date, movement_type).
+// Architettura identica a istat-sicilia: batch di righe pending/error, per
+// ognuna costruisce il tracciato, ottiene un token, verifica (Test) e invia
+// (Invio), salva la ricevuta, aggiorna stato/tentativi. Un fallimento su una
+// riga non blocca le altre. Idempotente per idempotency_key.
 //
-// ⚠️  DA CONFERMARE CON LA SPEC UFFICIALE (arriva con le credenziali Utente PMS):
-//     • il formato ESATTO del JSON di `buildIstatPayload()`
-//     • il meccanismo ESATTO di autenticazione in `authenticate()`
-//     Tutto il resto (coda, retry, logging, transizioni di stato) è definitivo.
-//     Cerca i marcatori  >>> SPEC UFFICIALE <<<  per i due punti da adattare.
+// ⚠️  DA CONFERMARE CON LA WSDL UFFICIALE (disponibile nel pannello
+//     alloggiatiweb.poliziadistato.it dopo l'attivazione del Web Service):
+//     • nome esatto del namespace/action SOAP e degli endpoint
+//     • posizioni/lunghezze esatte dei campi nel tracciato a larghezza fissa
+//     • tabella codici Comune/Stato (serve l'elenco ufficiale ISTAT)
+//     • formato esatto della ricevuta restituita da Invio
+//     Tutto il resto (coda, retry, storage ricevuta, transizioni di stato,
+//     deadline 24h) è definitivo e non dipende dalla spec.
+//     Cerca i marcatori  >>> SPEC UFFICIALE <<<  per i punti da adattare.
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// ---- Config da environment (secret Supabase) -------------------------------
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-// Endpoint ufficiale (verificato). Override possibile via secret.
-const ISTAT_ENDPOINT =
-  Deno.env.get("ISTAT_SICILIA_ENDPOINT") ??
-  "https://osservatorioturistico.regione.sicilia.it/webapi/api/stay/addfrompms";
+// Endpoint del Web Service (verificare l'URL esatto fornito nel pannello Alloggiati Web)
+const ALLOGGIATI_ENDPOINT =
+  Deno.env.get("ALLOGGIATI_ENDPOINT") ??
+  "https://alloggiatiweb.poliziadistato.it/service/service.asmx";
 
-// Password d'integrazione Utente PMS (fornita dall'assistenza del portale).
-// MVP single-tenant: una sola password nel secret. Multi-tenant: spostare in Vault.
-const ISTAT_PASSWORD = Deno.env.get("ISTAT_SICILIA_PASSWORD") ?? "";
-
-// Modalità auth: "basic" (default, username:password) oppure "bearer" (token).
-const ISTAT_AUTH_MODE = Deno.env.get("ISTAT_SICILIA_AUTH_MODE") ?? "basic";
-
-const BATCH_SIZE = 20;   // righe processate per invocazione
-const MAX_ATTEMPTS = 5;  // oltre questa soglia la riga resta 'error' e va gestita a mano
+const RECEIPT_BUCKET = "compliance-receipts";
+const BATCH_SIZE = 10;
+const MAX_ATTEMPTS = 5;
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
-// ---- Tipi ------------------------------------------------------------------
-interface IstatRow {
+// ---- Tipi -------------------------------------------------------------------
+interface RegRow {
   id: string;
+  booking_id: string;
   property_id: string;
-  booking_id: string | null;
-  submission_date: string;      // YYYY-MM-DD
-  movement_type: "arrival" | "departure" | "presence";
   attempts: number;
+  deadline_at: string | null;
+}
+
+interface GuestLine {
+  role_code: string;      // 16 singolo · 17 capofamiglia · 18 capogruppo · 19 familiare · 20 membro
+  first_name: string;
+  last_name: string;
+  gender: string | null;       // 'M' | 'F'
+  birth_date: string | null;   // YYYY-MM-DD
+  birth_place: string | null;
+  birth_country: string | null;
+  citizenship: string | null;
+  document_type: string | null;
+  document_number: string | null;
+  check_in: string;   // YYYY-MM-DD, arrivo
+  nights: number;     // giorni permanenza
+}
+
+// ---- Utility formattazione tracciato -----------------------------------------
+function padR(s: string | null | undefined, len: number): string {
+  return (s ?? "").toUpperCase().slice(0, len).padEnd(len, " ");
+}
+function padDateGGMMAAAA(iso: string | null | undefined): string {
+  if (!iso) return "".padEnd(8, " ");
+  const [y, m, d] = iso.split("-");
+  return `${d}${m}${y}`;
+}
+function sesso1o2(g: string | null): string {
+  return g === "F" ? "2" : "1"; // >>> SPEC UFFICIALE <<< confermare mappatura M/F -> 1/2
 }
 
 // ============================================================================
-//  >>> SPEC UFFICIALE <<<  — Autenticazione
-//  Ricostruzione più probabile: username = codice struttura, password = secret.
-//  Alcuni PMS usano Basic Auth diretta; altri un token OAuth2. Configurabile.
+//  >>> SPEC UFFICIALE <<<  — Riga tracciato (larghezza fissa, ~168 caratteri)
+//  Ordine e lunghezze campi da confermare col manuale ufficiale: qui la
+//  ricostruzione più diffusa nelle integrazioni PMS italiane.
 // ============================================================================
-async function authenticate(strutturaCode: string): Promise<Record<string, string>> {
-  if (ISTAT_AUTH_MODE === "bearer") {
-    // Variante token: se il portale richiede un login preliminare, farlo qui.
-    // const res = await fetch(TOKEN_URL, { ... }); const { token } = await res.json();
-    // return { Authorization: `Bearer ${token}` };
-    throw new Error("AUTH_MODE=bearer non ancora configurato: vedi spec Utente PMS");
-  }
-  // Default: Basic Auth  (username = codice struttura)
-  const basic = btoa(`${strutturaCode}:${ISTAT_PASSWORD}`);
-  return { Authorization: `Basic ${basic}` };
+function buildTracciatoLine(g: GuestLine): string {
+  return [
+    padR(g.role_code, 2),                  // tipo alloggiato (2 cifre)
+    padDateGGMMAAAA(g.check_in),            // data arrivo (8)
+    padR(String(g.nights), 2),              // giorni permanenza (2)
+    padR(g.last_name, 20),                  // cognome (20)
+    padR(g.first_name, 20),                 // nome (20) — vuoto per ruoli 19/20 se non richiesto
+    sesso1o2(g.gender),                     // sesso (1)
+    padDateGGMMAAAA(g.birth_date),          // data nascita (8)
+    padR(g.birth_country || g.birth_place, 9),  // comune/stato nascita — codice ISTAT (9)
+    padR("", 4),                            // provincia nascita (4) — da mappare se necessario
+    padR(g.citizenship, 9),                 // stato cittadinanza — codice ISTAT (9)
+    padR(g.document_type, 5),               // tipo documento — codice (5)
+    padR(g.document_number, 20),            // numero documento (20)
+    padR("", 9),                            // comune/stato rilascio documento (9)
+  ].join("");
 }
 
 // ============================================================================
-//  >>> SPEC UFFICIALE <<<  — Costruzione payload
-//  Campi noti richiesti dal movimento: codice struttura, data, per-ospite
-//  arrivo/partenza, nazionalità/stato, residenza, sesso, data/anno nascita.
-//  Adattare i NOMI dei campi al tracciato ufficiale ricevuto con le credenziali.
+//  >>> SPEC UFFICIALE <<<  — Autenticazione: GeneraToken
 // ============================================================================
-async function buildIstatPayload(row: IstatRow, strutturaCode: string) {
-  // Ospite capofila (dalla prenotazione)
-  let lead: any = null;
-  let extra: any[] = [];
+async function generaToken(utente: string, wsKey: string, password: string): Promise<string> {
+  const envelope = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <GeneraToken xmlns="AlloggiatiService">
+      <Utente>${escapeXml(utente)}</Utente>
+      <Password>${escapeXml(password)}</Password>
+      <WsKey>${escapeXml(wsKey)}</WsKey>
+    </GeneraToken>
+  </soap:Body>
+</soap:Envelope>`;
 
-  if (row.booking_id) {
-    const { data: booking } = await supabase
-      .from("bookings")
-      .select("id, guest_id, guest_name, check_in, check_out, guests_count")
-      .eq("id", row.booking_id)
+  const res = await fetch(ALLOGGIATI_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/xml; charset=utf-8",
+      "SOAPAction": "AlloggiatiService/GeneraToken",
+    },
+    body: envelope,
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`GeneraToken HTTP ${res.status}: ${text.slice(0, 300)}`);
+  const match = text.match(/<Token>([^<]*)<\/Token>/i);
+  if (!match || !match[1]) throw new Error("Token non trovato nella risposta: " + text.slice(0, 300));
+  return match[1];
+}
+
+// ============================================================================
+//  >>> SPEC UFFICIALE <<<  — Test (valida senza inviare) e Invio (invio reale)
+// ============================================================================
+async function callTestOrInvio(
+  operation: "Test" | "Invio",
+  token: string,
+  tracciato: string,
+): Promise<{ ok: boolean; raw: string }> {
+  const envelope = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <${operation} xmlns="AlloggiatiService">
+      <Token>${escapeXml(token)}</Token>
+      <Tracciato>${escapeXml(tracciato)}</Tracciato>
+    </${operation}>
+  </soap:Body>
+</soap:Envelope>`;
+
+  const res = await fetch(ALLOGGIATI_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/xml; charset=utf-8",
+      "SOAPAction": `AlloggiatiService/${operation}`,
+    },
+    body: envelope,
+  });
+  const text = await res.text();
+  // >>> SPEC UFFICIALE <<< il criterio di successo esatto (es. "Inserimento Effettuato
+  // Correttamente" nel corpo, oppure un codice/flag dedicato) va confermato.
+  const ok = res.ok && !/error|errore|fault/i.test(text);
+  return { ok, raw: text };
+}
+
+function escapeXml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// ---- Recupero ospiti della prenotazione (capofamiglia + booking_guests) -----
+async function loadGuestLines(bookingId: string): Promise<GuestLine[]> {
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select("id, guest_id, check_in, check_out, nights")
+    .eq("id", bookingId)
+    .single();
+  if (!booking) return [];
+
+  const lines: GuestLine[] = [];
+
+  if (booking.guest_id) {
+    const { data: g } = await supabase
+      .from("guests")
+      .select("first_name, last_name, gender, birth_date, birth_place, birth_country, citizenship, document_type, document_number, role_code")
+      .eq("id", booking.guest_id)
       .single();
-
-    if (booking?.guest_id) {
-      const { data: g } = await supabase
-        .from("guests")
-        .select("first_name, last_name, name, gender, birth_date, birth_place, birth_country, citizenship, nationality")
-        .eq("id", booking.guest_id)
-        .single();
-      lead = g;
+    if (g) {
+      lines.push({
+        role_code: g.role_code || "17", // capofamiglia di default
+        first_name: g.first_name || "", last_name: g.last_name || "",
+        gender: g.gender, birth_date: g.birth_date, birth_place: g.birth_place,
+        birth_country: g.birth_country, citizenship: g.citizenship,
+        document_type: g.document_type, document_number: g.document_number,
+        check_in: booking.check_in, nights: booking.nights || 1,
+      });
     }
-    const { data: bg } = await supabase
-      .from("booking_guests")
-      .select("first_name, last_name, gender, birth_date, birth_place, birth_country, citizenship")
-      .eq("booking_id", row.booking_id);
-    extra = bg ?? [];
   }
 
-  // Struttura del payload — DA ALLINEARE ai nomi campo ufficiali.
-  return {
-    codiceStruttura: strutturaCode,
-    data: row.submission_date,
-    tipoMovimento: row.movement_type, // arrivo/partenza/presenza
-    ospiti: [lead, ...extra].filter(Boolean).map((p: any) => ({
-      cognome: p.last_name ?? null,
-      nome: p.first_name ?? null,
-      sesso: p.gender ?? null,               // M/F -> eventualmente mappare 1/2
-      dataNascita: p.birth_date ?? null,
-      statoNascita: p.birth_country ?? null,
-      cittadinanza: p.citizenship ?? p.nationality ?? null,
-      // residenza / provincia: aggiungere se richiesti dal tracciato
-    })),
-  };
+  const { data: extra } = await supabase
+    .from("booking_guests")
+    .select("first_name, last_name, gender, birth_date, birth_place, birth_country, citizenship, document_type, document_number, role_code")
+    .eq("booking_id", bookingId);
+
+  for (const g of extra ?? []) {
+    lines.push({
+      role_code: g.role_code || "19",
+      first_name: g.first_name || "", last_name: g.last_name || "",
+      gender: g.gender, birth_date: g.birth_date, birth_place: g.birth_place,
+      birth_country: g.birth_country, citizenship: g.citizenship,
+      document_type: g.document_type, document_number: g.document_number,
+      check_in: booking.check_in, nights: booking.nights || 1,
+    });
+  }
+
+  return lines;
 }
 
-// ---- Invio singola riga ----------------------------------------------------
-async function processRow(row: IstatRow): Promise<void> {
-  // 1) Credenziali della property
+// ---- Elaborazione singola riga della coda -----------------------------------
+async function processRow(row: RegRow): Promise<void> {
   const { data: cred } = await supabase
     .from("compliance_credentials")
-    .select("istat_struttura_code")
+    .select("alloggiati_user, alloggiati_ws_key")
     .eq("property_id", row.property_id)
     .single();
 
-  const strutturaCode = cred?.istat_struttura_code;
-  if (!strutturaCode) {
-    await markError(row, "Codice struttura ISTAT mancante in compliance_credentials");
+  if (!cred?.alloggiati_user || !cred?.alloggiati_ws_key) {
+    await markError(row, "Credenziali Alloggiati Web mancanti (utente/WSKey) in compliance_credentials");
     return;
   }
-  if (!ISTAT_PASSWORD) {
-    await markError(row, "Secret ISTAT_SICILIA_PASSWORD non impostato");
+  const password = Deno.env.get("ALLOGGIATI_PASSWORD") ?? "";
+  if (!password) {
+    await markError(row, "Secret ALLOGGIATI_PASSWORD non impostato");
     return;
   }
 
-  // 2) Payload + auth
-  const payload = await buildIstatPayload(row, strutturaCode);
-  const authHeaders = await authenticate(strutturaCode);
+  const guestLines = await loadGuestLines(row.booking_id);
+  if (guestLines.length === 0) {
+    await markError(row, "Nessun ospite trovato per questa prenotazione");
+    return;
+  }
 
-  // 3) Invio
-  let httpStatus = 0;
-  let responseBody: unknown = null;
+  const tracciato = guestLines.map(buildTracciatoLine).join("\r\n");
+
   try {
-    const res = await fetch(ISTAT_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders },
-      body: JSON.stringify(payload),
-    });
-    httpStatus = res.status;
-    const text = await res.text();
-    try { responseBody = JSON.parse(text); } catch { responseBody = text; }
+    await supabase.from("guest_registrations").update({ status: "testing", tracciato_payload: tracciato }).eq("id", row.id);
 
-    if (res.ok) {
-      await supabase.from("istat_submissions").update({
-        status: "sent",
-        sent_at: new Date().toISOString(),
-        attempts: row.attempts + 1,
-        request_payload: payload,
-        response: { httpStatus, body: responseBody },
-        last_error: null,
-      }).eq("id", row.id);
+    const token = await generaToken(cred.alloggiati_user, cred.alloggiati_ws_key, password);
+
+    const test = await callTestOrInvio("Test", token, tracciato);
+    if (!test.ok) {
+      await markError(row, `Test fallito: ${test.raw.slice(0, 500)}`, tracciato);
       return;
     }
-    // HTTP non-2xx -> errore ritentabile
-    await markError(row, `HTTP ${httpStatus}: ${JSON.stringify(responseBody)}`, payload, responseBody, httpStatus);
+
+    const invio = await callTestOrInvio("Invio", token, tracciato);
+    if (!invio.ok) {
+      await markError(row, `Invio fallito: ${invio.raw.slice(0, 500)}`, tracciato);
+      return;
+    }
+
+    // Salva la ricevuta (prova legale, conservare 5 anni) nello storage privato
+    const receiptPath = `${row.property_id}/${row.booking_id}-${Date.now()}.txt`;
+    await supabase.storage.from(RECEIPT_BUCKET).upload(receiptPath, invio.raw, {
+      contentType: "text/plain", upsert: false,
+    });
+
+    await supabase.from("guest_registrations").update({
+      status: "sent",
+      sent_at: new Date().toISOString(),
+      attempts: row.attempts + 1,
+      receipt_storage_path: receiptPath,
+      last_error: null,
+    }).eq("id", row.id);
   } catch (e) {
-    await markError(row, `Eccezione invio: ${e instanceof Error ? e.message : String(e)}`, payload);
+    await markError(row, `Eccezione: ${e instanceof Error ? e.message : String(e)}`, tracciato);
   }
 }
 
-async function markError(
-  row: IstatRow,
-  message: string,
-  payload?: unknown,
-  responseBody?: unknown,
-  httpStatus?: number,
-): Promise<void> {
-  const attempts = row.attempts + 1;
-  await supabase.from("istat_submissions").update({
-    status: "error",                 // resta ritentabile finché attempts < MAX
-    attempts,
+async function markError(row: RegRow, message: string, tracciato?: string): Promise<void> {
+  await supabase.from("guest_registrations").update({
+    status: "error",
+    attempts: row.attempts + 1,
     last_error: message,
-    request_payload: payload ?? null,
-    response: responseBody !== undefined ? { httpStatus, body: responseBody } : null,
+    tracciato_payload: tracciato ?? null,
   }).eq("id", row.id);
 }
 
-// ---- Handler ---------------------------------------------------------------
+// ---- Handler ------------------------------------------------------------------
 Deno.serve(async (_req) => {
-  // Prende pending + error non ancora esauriti (retry con backoff naturale via cron)
   const { data: rows, error } = await supabase
-    .from("istat_submissions")
-    .select("id, property_id, booking_id, submission_date, movement_type, attempts")
+    .from("guest_registrations")
+    .select("id, booking_id, property_id, attempts, deadline_at")
     .in("status", ["pending", "error"])
     .lt("attempts", MAX_ATTEMPTS)
-    .order("submission_date", { ascending: true })
+    .order("deadline_at", { ascending: true, nullsFirst: false })
     .limit(BATCH_SIZE);
 
   if (error) {
@@ -205,9 +298,9 @@ Deno.serve(async (_req) => {
     });
   }
 
-  const queue = (rows ?? []) as IstatRow[];
+  const queue = (rows ?? []) as RegRow[];
   for (const row of queue) {
-    await processRow(row);   // sequenziale: un errore non blocca gli altri
+    await processRow(row);
   }
 
   return new Response(JSON.stringify({ ok: true, processed: queue.length }), {
