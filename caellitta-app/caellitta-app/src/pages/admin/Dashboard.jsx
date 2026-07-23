@@ -134,6 +134,16 @@ export default function Dashboard() {
     .reduce((s, b) => s + (b.checkout_amount_due || 0), 0)
   const operationalToSettle = cleaningToSettle + checkinToSettle + checkoutToSettle
 
+  // ───────────── METRICHE REVENUE MANAGEMENT — anno corrente ─────────────
+  const yearKey = String(thisYear)
+  const confirmedThisYear = bookings.filter(b => b.check_in?.slice(0, 4) === yearKey && (b.status === 'confirmed' || b.status === 'completed'))
+  const revenueThisYear = confirmedThisYear.reduce((s, b) => s + (b.amount_total || 0), 0)
+  const nightsThisYear = confirmedThisYear.reduce((s, b) => s + daysBetween(b.check_in, b.check_out), 0)
+  const adr = nightsThisYear > 0 ? revenueThisYear / nightsThisYear : 0
+  const isLeapYear = (thisYear % 4 === 0 && (thisYear % 100 !== 0 || thisYear % 400 === 0))
+  const revPar = revenueThisYear / (isLeapYear ? 366 : 365)
+  const avgStay = confirmedThisYear.length > 0 ? nightsThisYear / confirmedThisYear.length : 0
+
   // ───────────── PROMEMORIA WHATSAPP (da inviare oggi) ─────────────
   // Per ogni prenotazione attiva, verifica se un template attivo "scatta" oggi
   // in base a trigger_event (check_in/check_out/mid_stay) e trigger_offset_days.
@@ -304,6 +314,30 @@ export default function Dashboard() {
           color={commissionToCollect > 0 ? 'gold' : 'green'}
           accent="gold"
         />
+      </div>
+
+      {/* ───────────────── METRICHE REVENUE MANAGEMENT ───────────────── */}
+      <div className="card" style={{ marginBottom: '1.2rem' }}>
+        <div className="sec-hdr">
+          <span className="sec-title">Revenue management {thisYear}</span>
+        </div>
+        <div className="totali-grid">
+          <div className="totali-item">
+            <div className="totali-label">ADR (tariffa media/notte)</div>
+            <div className="totali-value" style={{ color: 'var(--gold)' }}>€{adr.toFixed(2)}</div>
+          </div>
+          <div className="totali-item">
+            <div className="totali-label">RevPAR (ricavo/notte disponibile)</div>
+            <div className="totali-value" style={{ color: 'var(--gold)' }}>€{revPar.toFixed(2)}</div>
+          </div>
+          <div className="totali-item">
+            <div className="totali-label">Permanenza media</div>
+            <div className="totali-value" style={{ color: 'var(--gold)' }}>{avgStay.toFixed(1)} notti</div>
+          </div>
+        </div>
+        <p style={{ fontSize: '0.6rem', color: 'var(--salt-faint)', marginTop: '0.8rem' }}>
+          ADR = entrate ÷ notti vendute · RevPAR = entrate ÷ giorni dell'anno (tutta la struttura, occupata o no)
+        </p>
       </div>
 
       {/* ───────────────── TOTALE COMPLESSIVO (da sempre) ───────────────── */}
