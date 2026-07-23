@@ -128,6 +128,13 @@ export default function WelcomeBook() {
   const ci = new Date(booking.check_in).toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
   const co = new Date(booking.check_out).toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
+  // Sezioni personalizzate create dall'host: appaiono nel menu dopo "Regole" e prima di "Esperienze"
+  const customChapters = (content?.custom_sections || []).map(sec => ({
+    id: sec.id, icon: sec.icon || '✨', labelIt: sec.label_it, labelEn: sec.label_en, custom: true,
+  }))
+  const allChapters = [...CHAPTERS.slice(0, 4), ...customChapters, ...CHAPTERS.slice(4)]
+  const activeCustomSection = (content?.custom_sections || []).find(sec => sec.id === chapter)
+
   return (
     <div style={{ ...buildWbTheme(content), minHeight: '100vh', background: 'var(--lava)', paddingBottom: 80, position: 'relative' }}>
       <div style={{ position: 'fixed', top: 0, left: 0, height: 2, background: 'var(--gold)', zIndex: 8000, width: '30%' }} />
@@ -138,7 +145,7 @@ export default function WelcomeBook() {
           <button key={l} onClick={() => setLang(l)} style={{
             background: lang === l ? 'rgba(201,171,114,0.12)' : 'none',
             border: `1px solid ${lang === l ? 'rgba(201,171,114,0.5)' : 'rgba(201,171,114,0.15)'}`,
-            color: lang === l ? 'var(--gold)' : 'rgba(240,235,225,0.3)',
+            color: lang === l ? 'var(--gold)' : 'var(--salt-faint)',
             fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase',
             padding: '0.25rem 0.5rem', cursor: 'pointer', fontFamily: "'Jost', sans-serif",
           }}>
@@ -152,6 +159,7 @@ export default function WelcomeBook() {
         {chapter === 'casa'       && <ChCasa lang={lang} items={content?.casa_items} />}
         {chapter === 'dintorni'   && <ChDintorni lang={lang} items={content?.dintorni_items} />}
         {chapter === 'regole'     && <ChRegole lang={lang} items={content?.regole_items} />}
+        {activeCustomSection      && <ChCustom lang={lang} section={activeCustomSection} />}
         {chapter === 'esperienze' && <ChEsperienze lang={lang} propertyId={booking.property_id} propertyName={booking.property_name}
           waNumber={(content?.contacts_items || []).find(c => c.is_whatsapp)?.phone?.replace(/[^\d]/g, '')} />}
         {chapter === 'coupon'     && <ChCoupon coupons={coupons} useCoupon={useCoupon} lang={lang} />}
@@ -161,17 +169,17 @@ export default function WelcomeBook() {
       {/* BOTTOM NAV */}
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 7000,
-        background: 'rgba(10,8,7,.96)', backdropFilter: 'blur(18px)',
+        background: 'var(--lava-mid)', backdropFilter: 'blur(18px)',
         borderTop: '1px solid var(--gold-dim)',
         display: 'flex', overflowX: 'auto', padding: '0 0.3rem',
         scrollbarWidth: 'none',
       }}>
-        {CHAPTERS.map(ch => (
+        {allChapters.map(ch => (
           <button key={ch.id} onClick={() => setChapter(ch.id)} style={{
             flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             gap: '0.22rem', padding: '0.7rem 0.9rem', cursor: 'pointer',
             border: 'none', background: 'transparent',
-            color: chapter === ch.id ? 'var(--gold)' : 'rgba(240,235,225,.28)',
+            color: chapter === ch.id ? 'var(--gold)' : 'var(--salt-faint)',
             minWidth: 56, transition: 'color .22s', position: 'relative',
           }}>
             <span style={{ fontSize: '1.1rem' }}>{ch.icon}</span>
@@ -227,7 +235,7 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang, content }) 
       <div style={{ padding: '0 1.5rem' }}>
         <div style={{ width: 28, height: 1, background: 'var(--gold)', opacity: .55, margin: '1.5rem 0' }} />
 
-        <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', fontWeight: 300, lineHeight: 1.85, color: 'rgba(240,235,225,.75)', marginBottom: '1rem' }}>
+        <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', fontWeight: 300, lineHeight: 1.85, color: 'var(--salt-dim)', marginBottom: '1rem' }}>
           {welcomeText}
         </p>
 
@@ -252,23 +260,23 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang, content }) 
           <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', marginBottom: '0.8rem' }}>🌐 WiFi</div>
           <div style={{ background: 'rgba(201,171,114,.06)', border: '1px solid rgba(201,171,114,.18)', padding: '0.8rem 1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid var(--gold-dim)' }}>
-              <span style={{ fontSize: '0.6rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(240,235,225,.28)' }}>{it ? 'Rete' : 'Network'}</span>
+              <span style={{ fontSize: '0.6rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>{it ? 'Rete' : 'Network'}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--gold)' }}>{wifiSsid}</span>
-                <button onClick={() => copyText(wifiSsid, setNetCopied)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: netCopied ? '#7dcca0' : 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
+                <button onClick={() => copyText(wifiSsid, setNetCopied)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: netCopied ? '#3d8a5c' : 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
                   {netCopied ? (it ? 'Copiato' : 'Copied') : (it ? 'Copia' : 'Copy')}
                 </button>
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0' }}>
-              <span style={{ fontSize: '0.6rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(240,235,225,.28)' }}>Password</span>
+              <span style={{ fontSize: '0.6rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>Password</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--gold)' }}>{wifiShown ? wifiPassword : '••••••••••••'}</span>
                 <button onClick={() => setWifiShown(!wifiShown)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
                   {wifiShown ? (it ? 'Nascondi' : 'Hide') : (it ? 'Mostra' : 'Show')}
                 </button>
                 {wifiShown && (
-                  <button onClick={() => copyText(wifiPassword, setPwdCopied)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: pwdCopied ? '#7dcca0' : 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
+                  <button onClick={() => copyText(wifiPassword, setPwdCopied)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: pwdCopied ? '#3d8a5c' : 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
                     {pwdCopied ? (it ? 'Copiato' : 'Copied') : (it ? 'Copia' : 'Copy')}
                   </button>
                 )}
@@ -284,7 +292,7 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang, content }) 
             Check-in {it ? 'dalle' : 'from'} <strong style={{ color: 'var(--gold)' }}>15:00</strong> &nbsp;·&nbsp;
             Check-out {it ? 'entro le' : 'by'} <strong style={{ color: 'var(--gold)' }}>11:00</strong>
           </div>
-          <div style={{ fontSize: '0.7rem', color: 'rgba(240,235,225,.28)', fontStyle: 'italic', marginTop: '0.3rem' }}>
+          <div style={{ fontSize: '0.7rem', color: 'var(--salt-faint)', fontStyle: 'italic', marginTop: '0.3rem' }}>
             Check-in from 3:00 PM · Check-out by 11:00 AM
           </div>
         </div>
@@ -421,6 +429,41 @@ function ChRegole({ lang, items }) {
             </li>
           ))}
         </ul>
+      </div>
+    </div>
+  )
+}
+
+// ── SEZIONE PERSONALIZZATA (creata liberamente dall'host) ──
+
+function ChCustom({ lang, section }) {
+  const it = lang === 'it'
+  return (
+    <div>
+      <div style={{ minHeight: '45vw', maxHeight: 240, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#2a2418 0%,#13100e 100%)' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
+        <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05 }}>
+          <span style={{ marginRight: '0.5rem' }}>{section.icon}</span>
+          <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>{it ? section.label_it : section.label_en}</em>
+        </h2>
+      </div>
+      <div style={{ padding: '0 1.5rem' }}>
+        <div style={{ width: 28, height: 1, background: 'var(--gold)', opacity: .55, margin: '1.5rem 0' }} />
+        {(!section.items || section.items.length === 0) ? (
+          <p style={{ fontSize: '0.8rem', color: 'var(--salt-faint)' }}>{it ? 'Sezione ancora vuota.' : 'This section is still empty.'}</p>
+        ) : section.items.map((item, idx) => (
+          <div key={idx} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '1.1rem 1.3rem', marginBottom: '0.65rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{item.icon}</span>
+            <div>
+              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem', marginBottom: '0.3rem' }}>
+                {it ? item.title_it : item.title_en}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--salt-dim)', lineHeight: 1.7, fontWeight: 200 }}>
+                {it ? item.text_it : item.text_en}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -582,9 +625,9 @@ function ChCoupon({ coupons, useCoupon, lang }) {
                       ✓ {it ? 'Utilizzato' : 'Used'}{c.used_at ? ` ${it ? 'il' : 'on'} ${new Date(c.used_at).toLocaleDateString(it ? 'it-IT' : 'en-GB')}` : ''}
                     </div>
                   ) : (
-                    <button onClick={() => { if (confirm(it ? 'Segnare questo coupon come utilizzato?' : 'Mark this coupon as used?')) useCoupon(c.id) }} style={{ width: '100%', padding: '0.55rem', border: '1px solid rgba(201,171,114,.3)', background: 'transparent', color: 'rgba(240,235,225,.7)', fontFamily: 'Jost,sans-serif', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all .2s' }}
+                    <button onClick={() => { if (confirm(it ? 'Segnare questo coupon come utilizzato?' : 'Mark this coupon as used?')) useCoupon(c.id) }} style={{ width: '100%', padding: '0.55rem', border: '1px solid rgba(201,171,114,.3)', background: 'transparent', color: 'var(--salt-dim)', fontFamily: 'Jost,sans-serif', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all .2s' }}
                       onMouseEnter={e => { e.target.style.background = 'rgba(201,171,114,.08)'; e.target.style.color = 'var(--gold)' }}
-                      onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = 'rgba(240,235,225,.7)' }}
+                      onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = 'var(--salt-dim)' }}
                     >
                       {it ? 'Segna come utilizzato' : 'Mark as used'}
                     </button>
@@ -666,8 +709,8 @@ function ChContatti({ lang, propertyName, items, emergencyItems }) {
           {emergency.map((e, idx) => (
             <div key={idx} style={{ background: 'rgba(140,74,74,.08)', border: '1px solid rgba(140,74,74,.22)', padding: '1rem', textAlign: 'center' }}>
               <div style={{ fontSize: '1.3rem', marginBottom: '0.4rem' }}>{ICON_MAP[e.icon] || '📞'}</div>
-              <div style={{ fontSize: '0.68rem', fontWeight: 300, color: 'rgba(240,235,225,.7)', marginBottom: '0.25rem' }}>{it ? e.name_it : e.name_en}</div>
-              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.1rem', color: '#e08080' }}>{e.num}</div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 300, color: 'var(--salt-dim)', marginBottom: '0.25rem' }}>{it ? e.name_it : e.name_en}</div>
+              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.1rem', color: '#b8483f' }}>{e.num}</div>
             </div>
           ))}
         </div>
