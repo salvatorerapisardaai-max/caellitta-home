@@ -31,10 +31,34 @@ export function PropertyProvider({ children }) {
     setActivePropertyIdState(id)
   }
 
+  // Crea una nuova struttura per l'account dell'utente loggato (fino a 5, applicato anche
+  // lato database). L'host la può aggiungere da solo dopo il login, senza intervento manuale.
+  async function createProperty({ name, address, cin, cir }) {
+    if (properties.length >= 5) {
+      return { error: { message: 'Limite massimo di 5 strutture per account raggiunto.' } }
+    }
+    const { data: userData } = await sb.auth.getUser()
+    const userId = userData?.user?.id
+    if (!userId) return { error: { message: 'Utente non autenticato.' } }
+
+    const { data: member } = await sb.from('account_members').select('account_id').eq('user_id', userId).limit(1).maybeSingle()
+    if (!member) return { error: { message: 'Nessun account associato a questo utente.' } }
+
+    const { data, error } = await sb.from('properties')
+      .insert({ account_id: member.account_id, name, address: address || null, cin: cin || null, cir: cir || null })
+      .select().single()
+
+    if (!error && data) {
+      await load()
+      setActivePropertyId(data.id)
+    }
+    return { data, error }
+  }
+
   const activeProperty = properties.find(p => p.id === activePropertyId) || null
 
   return (
-    <PropertyContext.Provider value={{ properties, activePropertyId, activeProperty, setActivePropertyId, loading, reload: load }}>
+    <PropertyContext.Provider value={{ properties, activePropertyId, activeProperty, setActivePropertyId, loading, reload: load, createProperty }}>
       {children}
     </PropertyContext.Provider>
   )
