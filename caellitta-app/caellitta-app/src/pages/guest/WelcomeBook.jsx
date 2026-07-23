@@ -11,7 +11,17 @@ const HERO_URL_DEFAULT = 'https://ejjatrfeeatgiqpomibd.supabase.co/storage/v1/ob
 // Numero WhatsApp principale di Caellitta Home (solo cifre, per i link wa.me)
 const CAELLITTA_WA = '393520124403'
 
-// Fallback WiFi se non ancora configurato dal Portale Ospiti
+// Tema del Welcome Book: indipendente dal tema (chiaro) del gestionale.
+// Applicato come override locale delle CSS custom properties sul contenitore
+// radice — così il gestionale può essere chiaro mentre il Welcome Book resta
+// nella sua estetica calda "notte mediterranea", senza conflitti.
+const WB_THEME = {
+  '--lava': '#111009', '--lava-mid': '#1c1710', '--lava-card': '#221d14', '--lava-hover': '#2a2418',
+  '--gold': '#c9ab72', '--gold-light': '#e8d0a0', '--gold-dim': 'rgba(201,171,114,0.12)', '--gold-dim2': 'rgba(201,171,114,0.22)',
+  '--salt': '#f0ebe1', '--salt-dim': 'rgba(240,235,225,0.58)', '--salt-faint': 'rgba(240,235,225,0.26)',
+  '--green': '#4a8a68', '--green-dim': 'rgba(74,138,104,0.15)',
+  '--red': '#8a4848', '--red-dim': 'rgba(138,72,72,0.15)',
+}
 const WIFI_SSID_DEFAULT = 'VodafoneCaellita Home'
 const WIFI_PASSWORD_DEFAULT = 'rJT9HdAP2F4Asp96'
 
@@ -89,7 +99,7 @@ export default function WelcomeBook() {
   const co = new Date(booking.check_out).toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--lava)', paddingBottom: 80, position: 'relative' }}>
+    <div style={{ ...WB_THEME, minHeight: '100vh', background: 'var(--lava)', paddingBottom: 80, position: 'relative' }}>
       <div style={{ position: 'fixed', top: 0, left: 0, height: 2, background: 'var(--gold)', zIndex: 8000, width: '30%' }} />
 
       {/* Lang switch — top right */}
