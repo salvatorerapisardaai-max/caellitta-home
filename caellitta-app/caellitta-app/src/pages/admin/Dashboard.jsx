@@ -291,7 +291,7 @@ export default function Dashboard() {
         <KPI
           label="Entrate mese"
           value={`€${monthRevenue.toLocaleString('it')}`}
-          sub={new Date().toLocaleDateString('it-IT', {
+          sub={calMonth.toLocaleDateString('it-IT', {
             month: 'long',
             year: 'numeric',
           })}
