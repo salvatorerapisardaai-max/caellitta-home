@@ -224,8 +224,8 @@ export default function WelcomeBook() {
     <div style={{ ...buildWbTheme(content), minHeight: '100vh', background: 'var(--lava)', paddingBottom: 80, position: 'relative' }}>
       <div style={{ position: 'fixed', top: 0, left: 0, height: 2, background: 'var(--gold)', zIndex: 8000, width: '30%' }} />
 
-      {/* Lang switch — top right, 5 lingue */}
-      <div style={{ position: 'fixed', top: 10, right: 12, zIndex: 9000, display: 'flex', gap: '0.25rem', background: 'rgba(0,0,0,0.15)', padding: '0.25rem', borderRadius: 4 }}>
+      {/* Lang switch — top right, 5 lingue. Sfondo/bordo sempre visibili sopra qualunque tema scelto */}
+      <div style={{ position: 'fixed', top: 10, right: 12, zIndex: 9000, display: 'flex', gap: '0.25rem', background: 'var(--lava-card)', border: '1px solid var(--gold-dim2)', padding: '0.3rem', borderRadius: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>
         {LANGS.map(({ code, flag }) => (
           <button key={code} onClick={() => setLang(code)} title={code.toUpperCase()} style={{
             background: lang === code ? 'rgba(201,171,114,0.18)' : 'none',
@@ -636,16 +636,16 @@ function ChEsperienze({ lang, propertyId, propertyName, waNumber }) {
               {cat.name}
             </div>
 
-            {cat.items.map(t => {
-              const title = t[`title_${lang}`] || t.title_en || t.title
-              const desc  = t[`description_${lang}`] || t.description_en || t.description
+            {cat.items.map(tpl => {
+              const title = tpl[`title_${lang}`] || tpl.title_en || tpl.title
+              const desc  = tpl[`description_${lang}`] || tpl.description_en || tpl.description
               return (
-                <div key={t.id} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', marginBottom: '0.75rem', overflow: 'hidden', display: 'flex' }}>
+                <div key={tpl.id} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', marginBottom: '0.75rem', overflow: 'hidden', display: 'flex' }}>
                   <div style={{ width: 3, background: cat.color, flexShrink: 0 }} />
                   <div style={{ padding: '1.1rem 1.2rem', flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.1rem', marginBottom: '0.3rem' }}>{title}</div>
-                    {t.discount && (
-                      <div style={{ fontSize: '0.68rem', color: 'rgba(201,171,114,.75)', lineHeight: 1.5, marginBottom: '0.45rem' }}>{t.discount}</div>
+                    {tpl.discount && (
+                      <div style={{ fontSize: '0.68rem', color: 'rgba(201,171,114,.75)', lineHeight: 1.5, marginBottom: '0.45rem' }}>{tpl.discount}</div>
                     )}
                     {desc && (
                       <div style={{ fontSize: '0.76rem', color: 'var(--salt-dim)', lineHeight: 1.72, fontWeight: 200 }}>{desc}</div>
@@ -700,13 +700,13 @@ function ChCoupon({ coupons, useCoupon, lang }) {
               {coupons.filter(c => !isCouponUsed(c)).length} {t('couponDisponibili', lang)} · {coupons.filter(c => isCouponUsed(c)).length} {t('utilizzatiPl', lang)}
             </div>
             {coupons.map(c => {
-              const t = c.coupon_templates
+              const tpl = c.coupon_templates
               const used = isCouponUsed(c)
-              const catName = t?.coupon_categories?.name || 'Altro'
+              const catName = tpl?.coupon_categories?.name || 'Altro'
               const icon = CAT_ICONS[catName] || '🎁'
-              const title = t?.[`title_${lang}`] || t?.title_en || t?.title
-              const desc  = t?.[`description_${lang}`] || t?.description_en || t?.description
-              const value = t?.discount
+              const title = tpl?.[`title_${lang}`] || tpl?.title_en || tpl?.title
+              const desc  = tpl?.[`description_${lang}`] || tpl?.description_en || tpl?.description
+              const value = tpl?.discount
               return (
                 <div key={c.id} style={{ background: used ? 'rgba(240,235,225,.03)' : 'var(--lava-card)', border: `1px solid ${used ? 'rgba(201,171,114,.08)' : 'var(--gold-dim)'}`, padding: '1.3rem', marginBottom: '0.75rem', overflow: 'hidden', position: 'relative', opacity: used ? 0.5 : 1 }}>
                   {!used && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,var(--gold),transparent)' }} />}
