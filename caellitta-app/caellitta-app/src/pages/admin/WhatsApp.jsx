@@ -5,7 +5,7 @@ import { useActiveProperty } from '../../lib/PropertyContext'
 
 const VARS_FIELDS = [
   { key: 'name',   label: 'Nome ospite',         ph: 'Marco',              full: true },
-  { key: 'code',   label: 'Codice prenotazione',  ph: 'CAELLITTA-2025-001', full: true },
+  { key: 'code',   label: 'Codice prenotazione',  ph: 'STRUTTURA-2026-001', full: true },
   { key: 'wb',     label: 'Link sito',            ph: 'https://tuosito.vercel.app', full: true },
   { key: 'cin',    label: 'Check-in',             ph: '5 Giu' },
   { key: 'cout',   label: 'Check-out',            ph: '12 Giu' },
