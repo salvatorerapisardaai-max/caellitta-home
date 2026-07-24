@@ -77,7 +77,13 @@ export default function Dashboard() {
     .filter(b => b.check_out >= todayIso)
     .sort((a, b) => a.check_out.localeCompare(b.check_out))
 
-  const thisMonthKey = todayIso.slice(0, 7)
+  // Le statistiche di riepilogo seguono il mese NAVIGATO nel calendario (calMonth),
+  // non sempre il mese reale di oggi — così cambiando mese nel calendario, il
+  // resoconto sotto si aggiorna di conseguenza (richiesta esplicita).
+  const viewYear = calMonth.getFullYear()
+  const viewMonth = calMonth.getMonth()
+  const thisMonthKey = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`
+  const isCurrentRealMonth = viewYear === thisYear && viewMonth === thisMonth
 
   // Solo prenotazioni confermate/completate contano come entrate reali del mese
   // (le "in attesa" non sono ricavo certo e gonfierebbero il margine)
@@ -100,9 +106,9 @@ export default function Dashboard() {
 
   const totalBookingsCount = bookings.filter(b => b.status === 'confirmed' || b.status === 'completed').length
 
-  // Tasso di occupazione del mese corrente: notti prenotate (qualunque stato non annullato) / giorni del mese
-  const monthStartIso = toISO(new Date(thisYear, thisMonth, 1))
-  const monthEndIso = toISO(new Date(thisYear, thisMonth + 1, 1))
+  // Tasso di occupazione del mese NAVIGATO (non del mese reale)
+  const monthStartIso = toISO(new Date(viewYear, viewMonth, 1))
+  const monthEndIso = toISO(new Date(viewYear, viewMonth + 1, 1))
   const daysInThisMonth = daysBetween(monthStartIso, monthEndIso)
   const occupiedNights = bookings.reduce((sum, b) => {
     const start = b.check_in > monthStartIso ? b.check_in : monthStartIso
@@ -247,6 +253,16 @@ export default function Dashboard() {
   return (
     <div>
       {/* ───────────────── KPI (mese corrente) ───────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.6rem' }}>
+        <span style={{ fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>
+          Riepilogo — {calMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
+        </span>
+        {!isCurrentRealMonth && (
+          <button className="btn-sm" onClick={() => setCalMonth(getRomeDate())} style={{ fontSize: '0.6rem', padding: '0.15rem 0.5rem' }}>
+            ← torna a oggi
+          </button>
+        )}
+      </div>
       <div className="dashboard-kpi-grid">
         <KPI
           label="Ospiti ora"
