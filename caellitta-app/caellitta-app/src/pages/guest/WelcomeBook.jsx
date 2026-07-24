@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { sb } from '../../lib/supabase'
-import heroFallback from '../../assets/acicastello.jpg'
+
 
 // Immagine del Benvenuto servita da Supabase Storage (bucket pubblico "site-media").
 // Se l'host ha caricato una foto dal Portale Ospiti (guest_portal_content.hero_image_url)
 // quella ha priorità; altrimenti si usa la convenzione fissa "benvenuto.jpg", poi il fallback locale.
-const HERO_URL_DEFAULT = 'https://ejjatrfeeatgiqpomibd.supabase.co/storage/v1/object/public/site-media/benvenuto.jpg'
+
 
 
 // Converte un colore esadecimale in "r,g,b" per costruire rgba(...) dinamicamente
@@ -292,23 +292,32 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang, content }) 
   }
 
   const it = lang === 'it'
-  const heroUrl = content?.hero_image_url || HERO_URL_DEFAULT
+  const heroUrl = content?.hero_image_url || null
   const wifiSsid = content?.wifi_ssid || WIFI_SSID_DEFAULT
   const wifiPassword = content?.wifi_password || WIFI_PASSWORD_DEFAULT
-  const welcomeText = it
-    ? (content?.welcome_text_it || 'Siamo felici di accoglierti personalmente e consegnarti le chiavi. Questa casa è nata per essere vissuta — non solo abitata.')
-    : (content?.welcome_text_en || 'We will be happy to welcome you personally and hand you the keys. This home was built to be lived — not just occupied.')
+  const welcomeText = content?.[`welcome_text_${lang}`] || content?.welcome_text_it || content?.welcome_text_en
+    || 'Welcome — this home was built to be lived, not just occupied.'
 
   return (
     <div>
-      {/* HERO — immagine dal bucket "site-media" (o override caricato dal Portale Ospiti), con fallback all'asset locale */}
+      {/* HERO — immagine dal Portale Ospiti se configurata, altrimenti un placeholder elegante generico (mai una foto di un'altra struttura) */}
       <div style={{ minHeight: '62vw', maxHeight: 340, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', overflow: 'hidden' }}>
-        <img
-          src={heroUrl}
-          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = heroFallback }}
-          alt="Aci Castello"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
-        />
+        {heroUrl ? (
+          <img
+            src={heroUrl}
+            onError={(e) => { e.currentTarget.style.display = 'none' }}
+            alt={booking.property_name || 'Struttura'}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+          />
+        ) : (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(135deg, var(--lava-hover) 0%, var(--lava) 60%, var(--lava-mid) 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{ fontSize: '3.5rem', opacity: 0.35 }}>🏡</span>
+          </div>
+        )}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.96) 0%,rgba(19,16,14,.2) 100%)' }} />
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>{booking.property_name || (t('laTuaStruttura', lang))}</p>
         <h1 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(2rem,9vw,2.8rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
