@@ -21,6 +21,10 @@ export default function Spese() {
   const [saving, setSaving]       = useState(false)
   const [saveError, setSaveError] = useState('')
   const [filterMonth, setFilter]  = useState('all')
+  const [recurring, setRecurring] = useState([])
+  const [recModal, setRecModal] = useState(false)
+  const [recForm, setRecForm] = useState({ description: '', amount: '', category: 'Utenze', frequency: 'monthly', start_date: new Date().toISOString().split('T')[0] })
+  const [savingRec, setSavingRec] = useState(false)
 
   useEffect(() => { if (activePropertyId) load() }, [activePropertyId])
 
@@ -31,6 +35,34 @@ export default function Spese() {
 
     const { data: bk } = await sb.from('bookings').select('id,code,guest_name').eq('property_id', activePropertyId).order('check_in', { ascending: false })
     setBookings(bk || [])
+
+    const { data: rec } = await sb.from('recurring_expense_templates').select('*').eq('property_id', activePropertyId).order('created_at', { ascending: false })
+    setRecurring(rec || [])
+  }
+
+  async function saveRecurring() {
+    if (!recForm.description || !recForm.amount) return
+    setSavingRec(true)
+    await sb.from('recurring_expense_templates').insert({
+      property_id: activePropertyId,
+      description: recForm.description, amount: parseFloat(recForm.amount), category: recForm.category,
+      frequency: recForm.frequency, start_date: recForm.start_date, next_run_date: recForm.start_date,
+    })
+    setSavingRec(false)
+    setRecForm({ description: '', amount: '', category: 'Utenze', frequency: 'monthly', start_date: new Date().toISOString().split('T')[0] })
+    setRecModal(false)
+    load()
+  }
+
+  async function toggleRecurringActive(r) {
+    await sb.from('recurring_expense_templates').update({ active: !r.active }).eq('id', r.id)
+    load()
+  }
+
+  async function deleteRecurring(r) {
+    if (!confirm(`Eliminare il template ricorrente "${r.description}"? Le spese già generate in passato restano.`)) return
+    await sb.from('recurring_expense_templates').delete().eq('id', r.id)
+    load()
   }
 
   function openNew() { setForm(EMPTY); setEditing(null); setSaveError(''); setModal(true) }
@@ -118,6 +150,7 @@ export default function Spese() {
             </button>
           ))}
         </div>
+        <button className="btn-ghost" onClick={() => setRecModal(true)} style={{ marginRight: '0.6rem' }}>↻ Spese ricorrenti</button>
         <button className="btn-primary" onClick={openNew}>+ Nuova spesa</button>
       </div>
 
@@ -179,6 +212,9 @@ export default function Spese() {
                   <span style={{ fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.15rem 0.5rem', border: '1px solid var(--gold-dim2)', color: CAT_COLORS[e.category]||'var(--salt-faint)' }}>
                     {e.category}
                   </span>
+                  {e.recurring_template_id && (
+                    <span style={{ fontSize: '0.58rem', color: 'var(--gold)', marginLeft: '0.4rem' }} title="Generata automaticamente da un abbonamento ricorrente">↻ ricorrente</span>
+                  )}
                   {e.booking_id && (() => {
                     const linked = bookings.find(b => b.id === e.booking_id)
                     return linked ? (
@@ -233,6 +269,62 @@ export default function Spese() {
             {saving ? 'Salvataggio…' : 'Salva spesa'}
           </button>
           <button className="btn-cancel" onClick={() => setModal(false)}>Annulla</button>
+        </div>
+      </Modal>
+
+      {/* MODAL SPESE RICORRENTI */}
+      <Modal open={recModal} onClose={() => setRecModal(false)} title="Spese ricorrenti" subtitle="Generate automaticamente ogni notte, senza doppioni">
+        {recurring.length === 0 ? (
+          <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)', marginBottom: '1.2rem' }}>Nessun abbonamento ricorrente configurato.</p>
+        ) : recurring.map(r => (
+          <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', background: 'var(--lava-hover)', border: '1px solid var(--gold-dim2)', padding: '0.7rem 0.9rem', marginBottom: '0.4rem', opacity: r.active ? 1 : 0.5 }}>
+            <div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--salt-dim)' }}>{r.description}</div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--salt-faint)' }}>
+                €{r.amount} · {r.frequency === 'monthly' ? 'mensile' : r.frequency === 'quarterly' ? 'trimestrale' : 'annuale'} · prossima: {r.next_run_date}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <button className="btn-sm" onClick={() => toggleRecurringActive(r)}>{r.active ? 'Sospendi' : 'Riattiva'}</button>
+              <button className="btn-sm danger" onClick={() => deleteRecurring(r)}>🗑</button>
+            </div>
+          </div>
+        ))}
+
+        <div style={{ borderTop: '1px solid var(--gold-dim2)', marginTop: '1.2rem', paddingTop: '1.2rem' }}>
+          <div className="form-group">
+            <label className="form-label">Descrizione</label>
+            <input className="form-input" value={recForm.description} onChange={e => setRecForm(p => ({ ...p, description: e.target.value }))} placeholder="Es. Abbonamento Netflix, Assicurazione" />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Importo €</label>
+              <input className="form-input" type="number" step="0.01" value={recForm.amount} onChange={e => setRecForm(p => ({ ...p, amount: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Frequenza</label>
+              <select className="form-select" value={recForm.frequency} onChange={e => setRecForm(p => ({ ...p, frequency: e.target.value }))}>
+                <option value="monthly">Mensile</option>
+                <option value="quarterly">Trimestrale</option>
+                <option value="yearly">Annuale</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Categoria</label>
+              <select className="form-select" value={recForm.category} onChange={e => setRecForm(p => ({ ...p, category: e.target.value }))}>
+                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Data prima occorrenza</label>
+              <input className="form-input" type="date" value={recForm.start_date} onChange={e => setRecForm(p => ({ ...p, start_date: e.target.value }))} />
+            </div>
+          </div>
+          <button className="btn-primary" style={{ width: '100%' }} onClick={saveRecurring} disabled={savingRec || !recForm.description || !recForm.amount}>
+            {savingRec ? 'Creazione…' : '+ Crea abbonamento ricorrente'}
+          </button>
         </div>
       </Modal>
     </div>
