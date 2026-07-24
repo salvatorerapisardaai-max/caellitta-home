@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Outlet, NavLink, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useLocation, Link } from 'react-router-dom'
 import { sb } from '../lib/supabase'
 import { useActiveProperty } from '../lib/PropertyContext'
 import Modal from './Modal'
@@ -20,7 +20,7 @@ const NAV = [
 const TITLES = {
   '/': 'Dashboard', '/prenotazioni': 'Prenotazioni', '/pulizie': 'Pulizie', '/checkin': 'Check-in Check-out',
   '/spese': 'Spese', '/convenzioni': 'Convenzioni', '/whatsapp': 'WhatsApp', '/portale-ospiti': 'Portale ospiti',
-  '/team': 'Team', '/adempimenti': 'Adempimenti',
+  '/team': 'Team', '/adempimenti': 'Adempimenti', '/fiscale': 'Fiscale',
 }
 
 export default function AdminLayout() {
@@ -143,6 +143,7 @@ function SidebarContent({ onNav }) {
       <div style={{ padding: '1.8rem 1.5rem 1.2rem', borderBottom: '1px solid var(--gold-dim)' }}>
         <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)' }}>Ospita</div>
         <div style={{ fontSize: '0.55rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--salt-faint)', marginTop: '0.2rem' }}>Gestionale</div>
+        <Link to="/strutture" style={{ display: 'block', fontSize: '0.62rem', color: 'var(--gold)', textDecoration: 'none', marginTop: '0.6rem' }}>← Le mie strutture</Link>
       </div>
 
       {/* SELETTORE STRUTTURA — visibile sempre; se ce n'è una sola, mostra solo il nome */}
@@ -228,6 +229,18 @@ function SidebarContent({ onNav }) {
           </NavLink>
         ))}
       </nav>
+
+      {/* HOST — a livello di account, non di singola struttura */}
+      <div style={{ padding: '1.2rem 1.4rem', borderTop: '1px solid var(--gold-dim)' }}>
+        <div style={{ fontSize: '0.55rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--salt-faint)', marginBottom: '0.5rem' }}>Host</div>
+        <NavLink to="/fiscale" onClick={onNav}
+          style={({ isActive }) => ({
+            display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8rem', fontWeight: 300,
+            color: isActive ? 'var(--gold)' : 'var(--salt-dim)', textDecoration: 'none',
+          })}>
+          <ShieldIcon /> Fiscale
+        </NavLink>
+      </div>
 
       {/* PORTALE OSPITI */}
       <div style={{ padding: '1.2rem 1.4rem', borderTop: '1px solid var(--gold-dim)' }}>
