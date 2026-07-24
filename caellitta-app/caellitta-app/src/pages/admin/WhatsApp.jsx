@@ -206,10 +206,10 @@ export default function WhatsApp() {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.8rem 1.4rem', borderBottom: '1px solid var(--gold-dim)' }}>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {['it', 'en'].map(l => (
+          {[['it','🇮🇹 IT'],['en','🇬🇧 EN'],['es','🇪🇸 ES'],['fr','🇫🇷 FR'],['de','🇩🇪 DE']].map(([l, label]) => (
             <button key={l} onClick={() => setLang(l)}
-              style={{ background: lang === l ? 'var(--gold-dim)' : 'transparent', border: '1px solid var(--gold-dim)', color: lang === l ? 'var(--gold)' : 'var(--salt-faint)', padding: '0.3rem 0.8rem', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'Jost,sans-serif' }}>
-              {l === 'it' ? '🇮🇹 IT' : '🇬🇧 EN'}
+              style={{ background: lang === l ? 'var(--gold-dim)' : 'transparent', border: '1px solid var(--gold-dim)', color: lang === l ? 'var(--gold)' : 'var(--salt-faint)', padding: '0.3rem 0.7rem', fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'Jost,sans-serif' }}>
+              {label}
             </button>
           ))}
         </div>
