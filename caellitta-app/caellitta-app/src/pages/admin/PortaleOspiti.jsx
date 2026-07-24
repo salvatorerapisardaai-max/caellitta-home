@@ -13,9 +13,9 @@ const THEME_PRESETS = [
   { name: 'Blu marino', bg: '#0d2b33', card: '#14424f', accent: '#e7b682', text: '#f6efe2' },
 ]
 
-const EMPTY_ITEM = { icon: '✨', title_it: '', title_en: '', text_it: '', text_en: '' }
-const EMPTY_CONTACT = { name: '', role_it: '', role_en: '', phone: '', is_whatsapp: false, avatar: 'person' }
-const EMPTY_EMERGENCY = { icon: 'medical', name_it: '', name_en: '', num: '' }
+const EMPTY_ITEM = { icon: '✨', title_it: '', title_en: '', title_es: '', title_fr: '', title_de: '', text_it: '', text_en: '', text_es: '', text_fr: '', text_de: '' }
+const EMPTY_CONTACT = { name: '', role_it: '', role_en: '', role_es: '', role_fr: '', role_de: '', phone: '', is_whatsapp: false, avatar: 'person' }
+const EMPTY_EMERGENCY = { icon: 'medical', name_it: '', name_en: '', name_es: '', name_fr: '', name_de: '', num: '' }
 
 export default function PortaleOspiti() {
   const { activePropertyId } = useActiveProperty()
@@ -24,6 +24,7 @@ export default function PortaleOspiti() {
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [editLang, setEditLang] = useState('it')
   const [heroPreview, setHeroPreview] = useState(null)
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export default function PortaleOspiti() {
     setLoading(true)
     const { data: c } = await sb.from('guest_portal_content').select('*').eq('property_id', activePropertyId).maybeSingle()
     setContent(c || {
-      welcome_text_it: '', welcome_text_en: '', wifi_ssid: '', wifi_password: '',
+      welcome_text_it: '', welcome_text_en: '', welcome_text_es: '', welcome_text_fr: '', welcome_text_de: '', wifi_ssid: '', wifi_password: '',
       hero_image_url: null, casa_items: [], dintorni_items: [], regole_items: [],
       contacts_items: [], emergency_items: [], custom_sections: [],
       theme_bg: '#111009', theme_card: '#221d14', theme_accent: '#c9ab72', theme_text: '#f0ebe1',
@@ -50,6 +51,9 @@ export default function PortaleOspiti() {
       property_id: activePropertyId,
       welcome_text_it: content.welcome_text_it,
       welcome_text_en: content.welcome_text_en,
+      welcome_text_es: content.welcome_text_es,
+      welcome_text_fr: content.welcome_text_fr,
+      welcome_text_de: content.welcome_text_de,
       wifi_ssid: content.wifi_ssid,
       wifi_password: content.wifi_password,
       hero_image_url: content.hero_image_url,
@@ -92,7 +96,7 @@ export default function PortaleOspiti() {
     setContent(p => ({
       ...p,
       custom_sections: [...(p.custom_sections || []), {
-        id: 'sec-' + Date.now(), icon: '✨', label_it: 'Nuova sezione', label_en: 'New section', items: [],
+        id: 'sec-' + Date.now(), icon: '✨', label_it: 'Nuova sezione', label_en: 'New section', label_es: '', label_fr: '', label_de: '', items: [],
       }],
     }))
   }
@@ -172,11 +176,22 @@ export default function PortaleOspiti() {
 
       <h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 300, fontSize: '1.6rem', color: 'var(--gold)', marginBottom: '0.2rem' }}>
         Portale ospiti
-
       </h2>
-      <p style={{ fontSize: '0.75rem', color: 'var(--salt-faint)', marginBottom: '1.5rem' }}>
-        Modifica foto e testi che gli ospiti vedono nel loro Welcome Book (/ospite/:codice).
+      <p style={{ fontSize: '0.75rem', color: 'var(--salt-faint)', marginBottom: '1rem' }}>
+        Il Welcome Book supporta 5 lingue. Scegli quale stai modificando — i contenuti già tradotti restano salvati nelle altre lingue.
       </p>
+      <div style={{ position: 'sticky', top: 0, zIndex: 50, display: 'flex', gap: '0.4rem', background: 'var(--lava)', padding: '0.6rem 0', marginBottom: '1.2rem', borderBottom: '1px solid var(--gold-dim2)' }}>
+        {[['it','🇮🇹 Italiano'],['en','🇬🇧 English'],['es','🇪🇸 Español'],['fr','🇫🇷 Français'],['de','🇩🇪 Deutsch']].map(([code, label]) => (
+          <button key={code} onClick={() => setEditLang(code)} style={{
+            background: editLang === code ? 'var(--gold-dim)' : 'transparent',
+            border: `1px solid ${editLang === code ? 'var(--gold)' : 'var(--gold-dim2)'}`,
+            color: editLang === code ? 'var(--gold)' : 'var(--salt-dim)',
+            padding: '0.4rem 0.8rem', fontSize: '0.68rem', cursor: 'pointer', fontFamily: 'Jost,sans-serif',
+          }}>
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* HERO IMAGE */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
@@ -196,19 +211,9 @@ export default function PortaleOspiti() {
 
       {/* TESTI BENVENUTO */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div className="sec-hdr"><span className="sec-title">Testo di benvenuto</span></div>
-        <div className="form-grid">
-          <div className="form-group">
-            <label className="form-label">Italiano</label>
-            <textarea className="form-textarea" style={{ minHeight: 110 }} value={content.welcome_text_it || ''}
-              onChange={e => setContent(p => ({ ...p, welcome_text_it: e.target.value }))} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">English</label>
-            <textarea className="form-textarea" style={{ minHeight: 110 }} value={content.welcome_text_en || ''}
-              onChange={e => setContent(p => ({ ...p, welcome_text_en: e.target.value }))} />
-          </div>
-        </div>
+        <div className="sec-hdr"><span className="sec-title">Testo di benvenuto ({editLang.toUpperCase()})</span></div>
+        <textarea className="form-textarea" style={{ minHeight: 110, width: '100%' }} value={content[`welcome_text_${editLang}`] || ''}
+          onChange={e => setContent(p => ({ ...p, [`welcome_text_${editLang}`]: e.target.value }))} />
       </div>
 
       {/* WIFI */}
@@ -317,11 +322,11 @@ export default function PortaleOspiti() {
       </div>
 
       <ItemListEditor title="La casa" listKey="casa_items" items={content.casa_items || []}
-        onUpdate={updateItem} onAdd={addItem} onRemove={removeItem} onMove={moveItem} />
+        onUpdate={updateItem} onAdd={addItem} onRemove={removeItem} onMove={moveItem} lang={editLang} />
       <ItemListEditor title="Dintorni" listKey="dintorni_items" items={content.dintorni_items || []}
-        onUpdate={updateItem} onAdd={addItem} onRemove={removeItem} onMove={moveItem} />
+        onUpdate={updateItem} onAdd={addItem} onRemove={removeItem} onMove={moveItem} lang={editLang} />
       <ItemListEditor title="Regole della casa" listKey="regole_items" items={content.regole_items || []}
-        onUpdate={updateItem} onAdd={addItem} onRemove={removeItem} onMove={moveItem} />
+        onUpdate={updateItem} onAdd={addItem} onRemove={removeItem} onMove={moveItem} lang={editLang} />
 
       {/* SEZIONI PERSONALIZZATE — capitoli aggiuntivi oltre ai 7 fissi, l'host può crearne quante vuole */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
@@ -395,7 +400,12 @@ function ColorField({ label, value, onChange }) {
   )
 }
 
-function ItemListEditor({ title, listKey, items, onUpdate, onAdd, onRemove, onMove }) {
+const EDIT_LANGS = [
+  { code: 'it', flag: '🇮🇹' }, { code: 'en', flag: '🇬🇧' }, { code: 'es', flag: '🇪🇸' },
+  { code: 'fr', flag: '🇫🇷' }, { code: 'de', flag: '🇩🇪' },
+]
+
+function ItemListEditor({ title, listKey, items, onUpdate, onAdd, onRemove, onMove, lang }) {
   return (
     <div className="card" style={{ marginBottom: '1.5rem' }}>
       <div className="sec-hdr">
@@ -408,16 +418,14 @@ function ItemListEditor({ title, listKey, items, onUpdate, onAdd, onRemove, onMo
           <div className="item-row" style={{ marginBottom: '.5rem' }}>
             <input className="form-input" style={{ width: 60, textAlign: 'center' }} value={item.icon}
               onChange={e => onUpdate(listKey, i, 'icon', e.target.value)} placeholder="🔑" />
-            <input className="form-input" style={{ flex: 1, minWidth: 160 }} value={item.title_it}
-              onChange={e => onUpdate(listKey, i, 'title_it', e.target.value)} placeholder="Titolo IT" />
-            <input className="form-input" style={{ flex: 1, minWidth: 160 }} value={item.title_en}
-              onChange={e => onUpdate(listKey, i, 'title_en', e.target.value)} placeholder="Titolo EN" />
+            <input className="form-input" style={{ flex: 1, minWidth: 160 }} value={item[`title_${lang}`] || ''}
+              onChange={e => onUpdate(listKey, i, `title_${lang}`, e.target.value)} placeholder={`Titolo (${lang.toUpperCase()})`} />
+            <LangCompleteness item={item} field="title" />
           </div>
           <div className="item-row" style={{ marginBottom: '.5rem' }}>
-            <textarea className="form-textarea" style={{ flex: 1, minHeight: 60 }} value={item.text_it}
-              onChange={e => onUpdate(listKey, i, 'text_it', e.target.value)} placeholder="Testo IT" />
-            <textarea className="form-textarea" style={{ flex: 1, minHeight: 60 }} value={item.text_en}
-              onChange={e => onUpdate(listKey, i, 'text_en', e.target.value)} placeholder="Testo EN" />
+            <textarea className="form-textarea" style={{ flex: 1, minHeight: 60 }} value={item[`text_${lang}`] || ''}
+              onChange={e => onUpdate(listKey, i, `text_${lang}`, e.target.value)} placeholder={`Testo (${lang.toUpperCase()})`} />
+            <LangCompleteness item={item} field="text" />
           </div>
           <div style={{ display: 'flex', gap: '.4rem' }}>
             <button className="btn-sm" onClick={() => onMove(listKey, i, -1)} disabled={i === 0}>↑</button>
@@ -425,6 +433,19 @@ function ItemListEditor({ title, listKey, items, onUpdate, onAdd, onRemove, onMo
             <button className="btn-sm danger" onClick={() => onRemove(listKey, i)}>🗑 Rimuovi</button>
           </div>
         </div>
+      ))}
+    </div>
+  )
+}
+
+// Piccolo indicatore: quali lingue sono già compilate per questo campo di questa voce.
+// Se manca una traduzione, il Welcome Book usa comunque IT come ripiego — non è bloccante,
+// ma aiuta l'host a capire cosa ha già tradotto e cosa no.
+function LangCompleteness({ item, field }) {
+  return (
+    <div style={{ display: 'flex', gap: '2px', alignItems: 'center', flexShrink: 0 }}>
+      {EDIT_LANGS.map(l => (
+        <span key={l.code} title={l.code.toUpperCase()} style={{ fontSize: '0.7rem', opacity: item[`${field}_${l.code}`] ? 1 : 0.22 }}>{l.flag}</span>
       ))}
     </div>
   )
