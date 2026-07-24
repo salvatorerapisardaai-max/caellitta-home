@@ -55,10 +55,28 @@ export function PropertyProvider({ children }) {
     return { data, error }
   }
 
+  async function updateProperty(id, fields) {
+    const { data, error } = await sb.from('properties').update(fields).eq('id', id).select().single()
+    if (!error) await load()
+    return { data, error }
+  }
+
+  async function deleteProperty(id) {
+    const { error } = await sb.rpc('delete_property_cascade', { p_property_id: id })
+    if (!error) {
+      if (id === activePropertyId) {
+        localStorage.removeItem(STORAGE_KEY)
+        setActivePropertyIdState(null)
+      }
+      await load()
+    }
+    return { error }
+  }
+
   const activeProperty = properties.find(p => p.id === activePropertyId) || null
 
   return (
-    <PropertyContext.Provider value={{ properties, activePropertyId, activeProperty, setActivePropertyId, loading, reload: load, createProperty }}>
+    <PropertyContext.Provider value={{ properties, activePropertyId, activeProperty, setActivePropertyId, loading, reload: load, createProperty, updateProperty, deleteProperty }}>
       {children}
     </PropertyContext.Provider>
   )
