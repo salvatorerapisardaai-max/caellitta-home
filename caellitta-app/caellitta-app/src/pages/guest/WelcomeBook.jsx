@@ -78,6 +78,85 @@ const CAT_ORDER = ['Esperienze', 'Barca & Mare', 'Etna & Avventura', 'Dal Cielo'
 // Un coupon è "usato" se lo dice lo status (allineato al gestionale) o se ha used_at
 const isCouponUsed = (c) => c?.status === 'used' || !!c?.used_at
 
+// ── SUPPORTO 5 LINGUE ────────────────────────────────────
+const LANGS = [
+  { code: 'it', flag: '🇮🇹' },
+  { code: 'en', flag: '🇬🇧' },
+  { code: 'es', flag: '🇪🇸' },
+  { code: 'fr', flag: '🇫🇷' },
+  { code: 'de', flag: '🇩🇪' },
+]
+
+const LOCALE_MAP = { it: 'it-IT', en: 'en-GB', es: 'es-ES', fr: 'fr-FR', de: 'de-DE' }
+
+// Dizionario dei testi fissi dell'interfaccia (non dei contenuti configurabili
+// dall'host, quelli restano nelle colonne _it/_en/_es/_fr/_de del database)
+const WB_STRINGS = {
+  aDuePassiDaQui: { it: 'A due passi da qui', en: 'Just steps away', es: 'A pocos pasos de aquí', fr: "À deux pas d'ici", de: 'Gleich in der Nähe' },
+  avventureSiciliane: { it: 'Avventure siciliane', en: 'Sicilian adventures', es: 'Aventuras sicilianas', fr: 'Aventures siciliennes', de: 'Sizilianische Abenteuer' },
+  caricamentoEsperienze: { it: 'Caricamento esperienze…', en: 'Loading experiences…', es: 'Cargando experiencias…', fr: 'Chargement des expériences…', de: 'Erlebnisse werden geladen…' },
+  chiama: { it: 'Chiama', en: 'Call', es: 'Llamar', fr: 'Appeler', de: 'Anrufen' },
+  contattiNonConfigurati: { it: 'Contatti non ancora configurati.', en: 'Contacts not yet configured.', es: 'Contactos aún no configurados.', fr: 'Contacts pas encore configurés.', de: 'Kontakte noch nicht eingerichtet.' },
+  copia: { it: 'Copia', en: 'Copy', es: 'Copiar', fr: 'Copier', de: 'Kopieren' },
+  copiato: { it: 'Copiato', en: 'Copied', es: 'Copiado', fr: 'Copié', de: 'Kopiert' },
+  esclusivoPerTe: { it: 'Esclusivo per te', en: 'Exclusive for you', es: 'Exclusivo para ti', fr: 'Exclusif pour vous', de: 'Exklusiv für Sie' },
+  esperienzeInArrivo: { it: 'Esperienze in arrivo a breve.', en: 'Experiences coming soon.', es: 'Experiencias próximamente.', fr: 'Expériences bientôt disponibles.', de: 'Erlebnisse in Kürze verfügbar.' },
+  couponInArrivo: { it: 'I tuoi coupon saranno disponibili a breve. Scrivi su WhatsApp se hai dubbi.', en: "Your coupons will be available shortly. Message us on WhatsApp if you have questions.", es: 'Tus cupones estarán disponibles pronto. Escríbenos por WhatsApp si tienes dudas.', fr: 'Vos coupons seront bientôt disponibles. Écrivez-nous sur WhatsApp en cas de doute.', de: 'Ihre Gutscheine sind in Kürze verfügbar. Schreiben Sie uns bei Fragen auf WhatsApp.' },
+  ilTuoSoggiorno: { it: 'Il tuo soggiorno', en: 'Your stay', es: 'Tu estancia', fr: 'Votre séjour', de: 'Ihr Aufenthalt' },
+  infoPratiche: { it: 'Info pratiche', en: 'Practical info', es: 'Información práctica', fr: 'Infos pratiques', de: 'Praktische Infos' },
+  laTuaStruttura: { it: 'La tua struttura', en: 'Your stay', es: 'Tu alojamiento', fr: 'Votre logement', de: 'Ihre Unterkunft' },
+  mostra: { it: 'Mostra', en: 'Show', es: 'Mostrar', fr: 'Afficher', de: 'Anzeigen' },
+  nascondi: { it: 'Nascondi', en: 'Hide', es: 'Ocultar', fr: 'Masquer', de: 'Verbergen' },
+  nessunCouponAncora: { it: 'Nessun coupon ancora', en: 'No coupons yet', es: 'Aún no hay cupones', fr: 'Pas encore de coupons', de: 'Noch keine Gutscheine' },
+  numeriEmergenza: { it: 'Numeri di emergenza', en: 'Emergency numbers', es: 'Números de emergencia', fr: "Numéros d'urgence", de: 'Notfallnummern' },
+  orari: { it: 'Orari', en: 'Timings', es: 'Horarios', fr: 'Horaires', de: 'Zeiten' },
+  prenotaViaWhatsapp: { it: 'Prenota via WhatsApp →', en: 'Book via WhatsApp →', es: 'Reserva por WhatsApp →', fr: 'Réservez via WhatsApp →', de: 'Über WhatsApp buchen →' },
+  rete: { it: 'Rete', en: 'Network', es: 'Red', fr: 'Réseau', de: 'Netzwerk' },
+  segnaUtilizzato: { it: 'Segna come utilizzato', en: 'Mark as used', es: 'Marcar como usado', fr: 'Marquer comme utilisé', de: 'Als verwendet markieren' },
+  confermaUtilizzo: { it: 'Segnare questo coupon come utilizzato?', en: 'Mark this coupon as used?', es: '¿Marcar este cupón como usado?', fr: 'Marquer ce coupon comme utilisé ?', de: 'Diesen Gutschein als verwendet markieren?' },
+  sezioneVuota: { it: 'Sezione ancora vuota.', en: 'This section is still empty.', es: 'Sección aún vacía.', fr: 'Section encore vide.', de: 'Abschnitt noch leer.' },
+  siamoQuiPerTe: { it: 'Siamo qui per te', en: 'We are here for you', es: 'Estamos aquí para ti', fr: 'Nous sommes là pour vous', de: 'Wir sind für Sie da' },
+  utilizzato: { it: 'Utilizzato', en: 'Used', es: 'Usado', fr: 'Utilisé', de: 'Verwendet' },
+  vivereBeneInsieme: { it: 'Vivere bene insieme', en: 'Living well together', es: 'Convivir bien', fr: 'Bien vivre ensemble', de: 'Gut zusammenleben' },
+  couponDisponibili: { it: 'coupon disponibili', en: 'coupons available', es: 'cupones disponibles', fr: 'coupons disponibles', de: 'verfügbare Gutscheine' },
+  dalleOra: { it: 'dalle', en: 'from', es: 'desde las', fr: 'à partir de', de: 'ab' },
+  entroLe: { it: 'entro le', en: 'by', es: 'antes de las', fr: 'avant', de: 'bis' },
+  ilGiorno: { it: 'il', en: 'on', es: 'el', fr: 'le', de: 'am' },
+  utilizzatiPl: { it: 'utilizzati', en: 'used', es: 'usados', fr: 'utilisés', de: 'verwendet' },
+}
+
+function t(key, lang) {
+  return WB_STRINGS[key]?.[lang] || WB_STRINGS[key]?.it || key
+}
+
+// Legge un campo multilingua da un contenuto configurabile dall'host (es. item.title_es).
+// Fallback: lingua richiesta → italiano → inglese → stringa vuota.
+function pick(obj, field, lang) {
+  if (!obj) return ''
+  return obj[`${field}_${lang}`] || obj[`${field}_it`] || obj[`${field}_en`] || ''
+}
+
+// Titoli hero: [prefisso, parte in corsivo dorato]. "welcome" va su due righe (<br/>),
+// gli altri sono su una riga sola.
+const HERO = {
+  welcome:    { it: ['Benvenuto', 'a casa tua.'], en: ['Welcome', 'to your home.'], es: ['Bienvenido', 'a tu hogar.'], fr: ['Bienvenue', 'chez vous.'], de: ['Willkommen', 'zu Hause.'] },
+  casa:       { it: ['La ', 'tua casa'], en: ['Your ', 'home'], es: ['Tu ', 'casa'], fr: ['Votre ', 'maison'], de: ['Ihr ', 'Zuhause'] },
+  dintorni:   { it: ['Nei ', 'dintorni'], en: ["What's ", 'nearby'], es: ['En los ', 'alrededores'], fr: ['Dans les ', 'environs'], de: ['In der ', 'Umgebung'] },
+  regole:     { it: ['Regole della ', 'casa'], en: ['House ', 'rules'], es: ['Normas de la ', 'casa'], fr: ['Règles de la ', 'maison'], de: ['Haus', 'regeln'] },
+  esperienze: { it: ['Esperienze da ', 'vivere'], en: ['Experiences to ', 'live'], es: ['Experiencias para ', 'vivir'], fr: ['Expériences à ', 'vivre'], de: ['Erlebnisse zum ', 'Entdecken'] },
+  coupon:     { it: ['I tuoi ', 'coupon'], en: ['Your ', 'coupons'], es: ['Tus ', 'cupones'], fr: ['Vos ', 'coupons'], de: ['Ihre ', 'Gutscheine'] },
+  contatti:   { it: ['Contatti & ', 'emergenze'], en: ['Contacts & ', 'emergencies'], es: ['Contactos y ', 'emergencias'], fr: ['Contacts et ', 'urgences'], de: ['Kontakte & ', 'Notfälle'] },
+}
+
+function HeroTitle({ chapterKey, lang }) {
+  const h = HERO[chapterKey]?.[lang] || HERO[chapterKey]?.it
+  const emStyle = { fontStyle: 'italic', color: 'var(--gold)' }
+  if (chapterKey === 'welcome') {
+    return <>{h[0]}<br/><em style={emStyle}>{h[1]}</em></>
+  }
+  return <>{h[0]}<em style={emStyle}>{h[1]}</em></>
+}
+
 const CHAPTERS = [
   { id: 'welcome',    icon: '🏠', labelIt: 'Benvenuto',   labelEn: 'Welcome' },
   { id: 'casa',       icon: '🔑', labelIt: 'La casa',     labelEn: 'The house' },
@@ -131,8 +210,8 @@ export default function WelcomeBook() {
     </div>
   )
 
-  const ci = new Date(booking.check_in).toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-  const co = new Date(booking.check_out).toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  const ci = new Date(booking.check_in).toLocaleDateString(LOCALE_MAP[lang] || 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  const co = new Date(booking.check_out).toLocaleDateString(LOCALE_MAP[lang] || 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
   // Sezioni personalizzate create dall'host: appaiono nel menu dopo "Regole" e prima di "Esperienze"
   const customChapters = (content?.custom_sections || []).map(sec => ({
@@ -145,17 +224,16 @@ export default function WelcomeBook() {
     <div style={{ ...buildWbTheme(content), minHeight: '100vh', background: 'var(--lava)', paddingBottom: 80, position: 'relative' }}>
       <div style={{ position: 'fixed', top: 0, left: 0, height: 2, background: 'var(--gold)', zIndex: 8000, width: '30%' }} />
 
-      {/* Lang switch — top right */}
-      <div style={{ position: 'fixed', top: 10, right: 12, zIndex: 9000, display: 'flex', gap: '0.3rem' }}>
-        {['it', 'en'].map(l => (
-          <button key={l} onClick={() => setLang(l)} style={{
-            background: lang === l ? 'rgba(201,171,114,0.12)' : 'none',
-            border: `1px solid ${lang === l ? 'rgba(201,171,114,0.5)' : 'rgba(201,171,114,0.15)'}`,
-            color: lang === l ? 'var(--gold)' : 'var(--salt-faint)',
-            fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase',
-            padding: '0.25rem 0.5rem', cursor: 'pointer', fontFamily: "'Jost', sans-serif",
+      {/* Lang switch — top right, 5 lingue */}
+      <div style={{ position: 'fixed', top: 10, right: 12, zIndex: 9000, display: 'flex', gap: '0.25rem', background: 'rgba(0,0,0,0.15)', padding: '0.25rem', borderRadius: 4 }}>
+        {LANGS.map(({ code, flag }) => (
+          <button key={code} onClick={() => setLang(code)} title={code.toUpperCase()} style={{
+            background: lang === code ? 'rgba(201,171,114,0.18)' : 'none',
+            border: `1px solid ${lang === code ? 'rgba(201,171,114,0.5)' : 'transparent'}`,
+            fontSize: '0.85rem',
+            padding: '0.2rem 0.35rem', cursor: 'pointer', fontFamily: "'Jost', sans-serif", borderRadius: 3,
           }}>
-            {l === 'it' ? '🇮🇹' : '🇬🇧'}
+            {flag}
           </button>
         ))}
       </div>
@@ -232,9 +310,9 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang, content }) 
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
         />
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.96) 0%,rgba(19,16,14,.2) 100%)' }} />
-        <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>{booking.property_name || (it ? 'La tua struttura' : 'Your stay')}</p>
+        <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>{booking.property_name || (t('laTuaStruttura', lang))}</p>
         <h1 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(2rem,9vw,2.8rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
-          {it ? <>Benvenuto<br/><em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>a casa tua.</em></> : <>Welcome<br/><em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>to your home.</em></>}
+          {<HeroTitle chapterKey="welcome" lang={lang} />}
         </h1>
       </div>
 
@@ -249,7 +327,7 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang, content }) 
 
         {/* Booking info */}
         <span style={{ fontSize: '0.58rem', letterSpacing: '0.35em', textTransform: 'uppercase', color: 'var(--gold)', display: 'block', marginBottom: '0.7rem' }}>
-          {it ? 'Il tuo soggiorno' : 'Your stay'}
+          {t('ilTuoSoggiorno', lang)}
         </span>
         <div style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '1.2rem 1.3rem', marginBottom: '0.75rem', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,var(--gold),transparent)' }} />
@@ -266,11 +344,11 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang, content }) 
           <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', marginBottom: '0.8rem' }}>🌐 WiFi</div>
           <div style={{ background: 'rgba(201,171,114,.06)', border: '1px solid rgba(201,171,114,.18)', padding: '0.8rem 1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid var(--gold-dim)' }}>
-              <span style={{ fontSize: '0.6rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>{it ? 'Rete' : 'Network'}</span>
+              <span style={{ fontSize: '0.6rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>{t('rete', lang)}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--gold)' }}>{wifiSsid}</span>
                 <button onClick={() => copyText(wifiSsid, setNetCopied)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: netCopied ? '#3d8a5c' : 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
-                  {netCopied ? (it ? 'Copiato' : 'Copied') : (it ? 'Copia' : 'Copy')}
+                  {netCopied ? (t('copiato', lang)) : (t('copia', lang))}
                 </button>
               </div>
             </div>
@@ -279,11 +357,11 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang, content }) 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--gold)' }}>{wifiShown ? wifiPassword : '••••••••••••'}</span>
                 <button onClick={() => setWifiShown(!wifiShown)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
-                  {wifiShown ? (it ? 'Nascondi' : 'Hide') : (it ? 'Mostra' : 'Show')}
+                  {wifiShown ? (t('nascondi', lang)) : (t('mostra', lang))}
                 </button>
                 {wifiShown && (
                   <button onClick={() => copyText(wifiPassword, setPwdCopied)} style={{ background: 'transparent', border: '1px solid rgba(201,171,114,.28)', color: pwdCopied ? '#3d8a5c' : 'var(--gold)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.25rem 0.55rem', cursor: 'pointer' }}>
-                    {pwdCopied ? (it ? 'Copiato' : 'Copied') : (it ? 'Copia' : 'Copy')}
+                    {pwdCopied ? (t('copiato', lang)) : (t('copia', lang))}
                   </button>
                 )}
               </div>
@@ -293,10 +371,10 @@ function ChWelcome({ booking, ci, co, wifiShown, setWifiShown, lang, content }) 
 
         {/* Orari */}
         <div style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '1.2rem 1.3rem' }}>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', marginBottom: '0.4rem' }}>🕐 {it ? 'Orari' : 'Timings'}</div>
+          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.05rem', marginBottom: '0.4rem' }}>🕐 {t('orari', lang)}</div>
           <div style={{ fontSize: '0.78rem', color: 'var(--salt-dim)' }}>
-            Check-in {it ? 'dalle' : 'from'} <strong style={{ color: 'var(--gold)' }}>15:00</strong> &nbsp;·&nbsp;
-            Check-out {it ? 'entro le' : 'by'} <strong style={{ color: 'var(--gold)' }}>11:00</strong>
+            Check-in {t('dalleOra', lang)} <strong style={{ color: 'var(--gold)' }}>15:00</strong> &nbsp;·&nbsp;
+            Check-out {t('entroLe', lang)} <strong style={{ color: 'var(--gold)' }}>11:00</strong>
           </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--salt-faint)', fontStyle: 'italic', marginTop: '0.3rem' }}>
             Check-in from 3:00 PM · Check-out by 11:00 AM
@@ -327,10 +405,10 @@ function ChCasa({ lang, items }) {
       <div style={{ minHeight: '55vw', maxHeight: 280, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#1a3040 0%,#13100e 100%)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
-          {it ? 'Info pratiche' : 'Practical info'}
+          {t('infoPratiche', lang)}
         </p>
         <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
-          {it ? <>La <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>tua casa</em></> : <>Your <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>home</em></>}
+          {<HeroTitle chapterKey="casa" lang={lang} />}
         </h2>
       </div>
       <div style={{ padding: '0 1.5rem' }}>
@@ -340,10 +418,10 @@ function ChCasa({ lang, items }) {
             <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{item.icon}</span>
             <div>
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem', marginBottom: '0.3rem' }}>
-                {it ? item.title_it : item.title_en}
+                {pick(item, 'title', lang)}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--salt-dim)', lineHeight: 1.7, fontWeight: 200 }}>
-                {it ? item.text_it : item.text_en}
+                {pick(item, 'text', lang)}
               </div>
             </div>
           </div>
@@ -370,10 +448,10 @@ function ChDintorni({ lang, items }) {
       <div style={{ minHeight: '45vw', maxHeight: 240, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#0c2438 0%,#13100e 100%)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
-          {it ? 'A due passi da qui' : 'Just steps away'}
+          {t('aDuePassiDaQui', lang)}
         </p>
         <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
-          {it ? <>Nei <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>dintorni</em></> : <>What's <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>nearby</em></>}
+          {<HeroTitle chapterKey="dintorni" lang={lang} />}
         </h2>
       </div>
       <div style={{ padding: '0 1.5rem' }}>
@@ -383,10 +461,10 @@ function ChDintorni({ lang, items }) {
             <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{item.icon}</span>
             <div>
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem', marginBottom: '0.3rem' }}>
-                {it ? item.title_it : item.title_en}
+                {pick(item, 'title', lang)}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--salt-dim)', lineHeight: 1.7, fontWeight: 200 }}>
-                {it ? item.text_it : item.text_en}
+                {pick(item, 'text', lang)}
               </div>
             </div>
           </div>
@@ -416,10 +494,10 @@ function ChRegole({ lang, items }) {
       <div style={{ minHeight: '45vw', maxHeight: 240, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#1a1a2e 0%,#13100e 100%)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
-          {it ? 'Vivere bene insieme' : 'Living well together'}
+          {t('vivereBeneInsieme', lang)}
         </p>
         <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
-          {it ? <>Regole della <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>casa</em></> : <>House <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>rules</em></>}
+          {<HeroTitle chapterKey="regole" lang={lang} />}
         </h2>
       </div>
       <div style={{ padding: '0 1.5rem' }}>
@@ -429,8 +507,8 @@ function ChRegole({ lang, items }) {
             <li key={r.title_it || idx} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', padding: '0.8rem 0', borderBottom: '1px solid var(--gold-dim)', fontSize: '0.8rem', fontWeight: 200, color: 'var(--salt-dim)', lineHeight: 1.65 }}>
               <span style={{ fontSize: '0.9rem', flexShrink: 0, marginTop: '0.05rem' }}>{r.icon}</span>
               <div>
-                <strong style={{ color: 'var(--salt)', fontWeight: 400 }}>{it ? r.title_it : r.title_en}</strong>
-                <br/>{it ? r.text_it : r.text_en}
+                <strong style={{ color: 'var(--salt)', fontWeight: 400 }}>{pick(r, 'title', lang)}</strong>
+                <br/>{pick(r, 'text', lang)}
               </div>
             </li>
           ))}
@@ -450,22 +528,22 @@ function ChCustom({ lang, section }) {
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
         <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
           <span style={{ marginRight: '0.5rem' }}>{section.icon}</span>
-          <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>{it ? section.label_it : section.label_en}</em>
+          <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>{pick(section, 'label', lang)}</em>
         </h2>
       </div>
       <div style={{ padding: '0 1.5rem' }}>
         <div style={{ width: 28, height: 1, background: 'var(--gold)', opacity: .55, margin: '1.5rem 0' }} />
         {(!section.items || section.items.length === 0) ? (
-          <p style={{ fontSize: '0.8rem', color: 'var(--salt-faint)' }}>{it ? 'Sezione ancora vuota.' : 'This section is still empty.'}</p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--salt-faint)' }}>{t('sezioneVuota', lang)}</p>
         ) : section.items.map((item, idx) => (
           <div key={idx} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '1.1rem 1.3rem', marginBottom: '0.65rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{item.icon}</span>
             <div>
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem', marginBottom: '0.3rem' }}>
-                {it ? item.title_it : item.title_en}
+                {pick(item, 'title', lang)}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--salt-dim)', lineHeight: 1.7, fontWeight: 200 }}>
-                {it ? item.text_it : item.text_en}
+                {pick(item, 'text', lang)}
               </div>
             </div>
           </div>
@@ -524,10 +602,10 @@ function ChEsperienze({ lang, propertyId, propertyName, waNumber }) {
       <div style={{ minHeight: '45vw', maxHeight: 240, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#0c2e1e 0%,#13100e 100%)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
-          {it ? 'Avventure siciliane' : 'Sicilian adventures'}
+          {t('avventureSiciliane', lang)}
         </p>
         <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
-          {it ? <>Esperienze da <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>vivere</em></> : <>Experiences to <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>live</em></>}
+          {<HeroTitle chapterKey="esperienze" lang={lang} />}
         </h2>
       </div>
 
@@ -536,11 +614,11 @@ function ChEsperienze({ lang, propertyId, propertyName, waNumber }) {
 
         {loading ? (
           <div style={{ color: 'var(--salt-faint)', fontStyle: 'italic', fontSize: '0.85rem', padding: '1rem 0' }}>
-            {it ? 'Caricamento esperienze…' : 'Loading experiences…'}
+            {t('caricamentoEsperienze', lang)}
           </div>
         ) : cats.length === 0 ? (
           <div style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '2rem', textAlign: 'center', color: 'var(--salt-faint)', fontSize: '0.85rem' }}>
-            {it ? 'Esperienze in arrivo a breve.' : 'Experiences coming soon.'}
+            {t('esperienzeInArrivo', lang)}
           </div>
         ) : cats.map(cat => (
           <div key={cat.name} style={{ marginBottom: '1.6rem' }}>
@@ -550,8 +628,8 @@ function ChEsperienze({ lang, propertyId, propertyName, waNumber }) {
             </div>
 
             {cat.items.map(t => {
-              const title = it ? t.title : (t.title_en || t.title)
-              const desc  = it ? t.description : (t.description_en || t.description)
+              const title = t[`title_${lang}`] || t.title_en || t.title
+              const desc  = t[`description_${lang}`] || t.description_en || t.description
               return (
                 <div key={t.id} style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', marginBottom: '0.75rem', overflow: 'hidden', display: 'flex' }}>
                   <div style={{ width: 3, background: cat.color, flexShrink: 0 }} />
@@ -565,7 +643,7 @@ function ChEsperienze({ lang, propertyId, propertyName, waNumber }) {
                     )}
                     {waNumber && (
                       <a href={waLink(title)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: '0.85rem', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--lava)', background: 'var(--gold)', textDecoration: 'none', padding: '0.4rem 0.9rem' }}>
-                        {it ? 'Prenota via WhatsApp →' : 'Book via WhatsApp →'}
+                        {t('prenotaViaWhatsapp', lang)}
                       </a>
                     )}
                   </div>
@@ -589,10 +667,10 @@ function ChCoupon({ coupons, useCoupon, lang }) {
       <div style={{ minHeight: '45vw', maxHeight: 240, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#2e1a0c 0%,#13100e 100%)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
-          {it ? 'Esclusivo per te' : 'Exclusive for you'}
+          {t('esclusivoPerTe', lang)}
         </p>
         <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
-          {it ? <>I tuoi <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>coupon</em></> : <>Your <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>coupons</em></>}
+          {<HeroTitle chapterKey="coupon" lang={lang} />}
         </h2>
       </div>
       <div style={{ padding: '0 1.5rem' }}>
@@ -601,24 +679,24 @@ function ChCoupon({ coupons, useCoupon, lang }) {
           <div style={{ background: 'var(--lava-card)', border: '1px solid var(--gold-dim)', padding: '2rem', textAlign: 'center' }}>
             <div style={{ fontSize: '2rem', marginBottom: '0.8rem' }}>🎁</div>
             <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.1rem', marginBottom: '0.5rem' }}>
-              {it ? 'Nessun coupon ancora' : 'No coupons yet'}
+              {t('nessunCouponAncora', lang)}
             </div>
             <div style={{ fontSize: '0.78rem', color: 'var(--salt-faint)', lineHeight: 1.8, fontWeight: 200 }}>
-              {it ? 'I tuoi coupon saranno disponibili a breve. Scrivi su WhatsApp se hai dubbi.' : 'Your coupons will be available shortly. Message us on WhatsApp if you have questions.'}
+              {t('couponInArrivo', lang)}
             </div>
           </div>
         ) : (
           <>
             <div style={{ fontSize: '0.58rem', letterSpacing: '0.35em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.9rem' }}>
-              {coupons.filter(c => !isCouponUsed(c)).length} {it ? 'coupon disponibili' : 'coupons available'} · {coupons.filter(c => isCouponUsed(c)).length} {it ? 'utilizzati' : 'used'}
+              {coupons.filter(c => !isCouponUsed(c)).length} {t('couponDisponibili', lang)} · {coupons.filter(c => isCouponUsed(c)).length} {t('utilizzatiPl', lang)}
             </div>
             {coupons.map(c => {
               const t = c.coupon_templates
               const used = isCouponUsed(c)
               const catName = t?.coupon_categories?.name || 'Altro'
               const icon = CAT_ICONS[catName] || '🎁'
-              const title = it ? t?.title : (t?.title_en || t?.title)
-              const desc  = it ? t?.description : (t?.description_en || t?.description)
+              const title = t?.[`title_${lang}`] || t?.title_en || t?.title
+              const desc  = t?.[`description_${lang}`] || t?.description_en || t?.description
               const value = t?.discount
               return (
                 <div key={c.id} style={{ background: used ? 'rgba(240,235,225,.03)' : 'var(--lava-card)', border: `1px solid ${used ? 'rgba(201,171,114,.08)' : 'var(--gold-dim)'}`, padding: '1.3rem', marginBottom: '0.75rem', overflow: 'hidden', position: 'relative', opacity: used ? 0.5 : 1 }}>
@@ -630,14 +708,14 @@ function ChCoupon({ coupons, useCoupon, lang }) {
                   <div style={{ fontFamily: 'monospace', fontSize: '0.72rem', background: 'rgba(201,171,114,.08)', color: 'var(--gold)', padding: '0.35rem 0.75rem', display: 'inline-block', marginBottom: '0.8rem', letterSpacing: '0.08em' }}>{c.code}</div>
                   {used ? (
                     <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)', padding: '0.4rem 0' }}>
-                      ✓ {it ? 'Utilizzato' : 'Used'}{c.used_at ? ` ${it ? 'il' : 'on'} ${new Date(c.used_at).toLocaleDateString(it ? 'it-IT' : 'en-GB')}` : ''}
+                      ✓ {t('utilizzato', lang)}{c.used_at ? ` ${t('ilGiorno', lang)} ${new Date(c.used_at).toLocaleDateString(LOCALE_MAP[lang] || 'en-GB')}` : ''}
                     </div>
                   ) : (
-                    <button onClick={() => { if (confirm(it ? 'Segnare questo coupon come utilizzato?' : 'Mark this coupon as used?')) useCoupon(c.id) }} style={{ width: '100%', padding: '0.55rem', border: '1px solid rgba(201,171,114,.3)', background: 'transparent', color: 'var(--salt-dim)', fontFamily: 'Jost,sans-serif', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all .2s' }}
+                    <button onClick={() => { if (confirm(t('confermaUtilizzo', lang))) useCoupon(c.id) }} style={{ width: '100%', padding: '0.55rem', border: '1px solid rgba(201,171,114,.3)', background: 'transparent', color: 'var(--salt-dim)', fontFamily: 'Jost,sans-serif', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all .2s' }}
                       onMouseEnter={e => { e.target.style.background = 'rgba(201,171,114,.08)'; e.target.style.color = 'var(--gold)' }}
                       onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = 'var(--salt-dim)' }}
                     >
-                      {it ? 'Segna come utilizzato' : 'Mark as used'}
+                      {t('segnaUtilizzato', lang)}
                     </button>
                   )}
                 </div>
@@ -668,7 +746,14 @@ function ChContatti({ lang, propertyName, items, emergencyItems }) {
   function contactLink(c) {
     const digits = (c.phone || '').replace(/[^\d+]/g, '').replace(/^\+/, '')
     if (c.is_whatsapp) {
-      const msg = it ? `Ciao! Scrivo da ${propertyName || 'qui'}.` : `Hello! Writing from ${propertyName || 'here'}.`
+      const CONTACT_MSG = {
+        it: `Ciao! Scrivo da ${propertyName || 'qui'}.`,
+        en: `Hello! Writing from ${propertyName || 'here'}.`,
+        es: `¡Hola! Escribo desde ${propertyName || 'aquí'}.`,
+        fr: `Bonjour ! J'écris depuis ${propertyName || 'ici'}.`,
+        de: `Hallo! Ich schreibe aus ${propertyName || 'hier'}.`,
+      }
+      const msg = CONTACT_MSG[lang] || CONTACT_MSG.it
       return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
     }
     return `tel:+${digits}`
@@ -679,10 +764,10 @@ function ChContatti({ lang, propertyName, items, emergencyItems }) {
       <div style={{ minHeight: '40vw', maxHeight: 220, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1.8rem 1.5rem 1.5rem', position: 'relative', background: 'linear-gradient(135deg,#1e1a10 0%,#13100e 100%)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(19,16,14,.95) 0%,rgba(19,16,14,.15) 100%)' }} />
         <p style={{ position: 'relative', zIndex: 2, fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '0.5rem' }}>
-          {it ? 'Siamo qui per te' : 'We are here for you'}
+          {t('siamoQuiPerTe', lang)}
         </p>
         <h2 style={{ position: 'relative', zIndex: 2, fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,8vw,2.5rem)', fontWeight: 300, lineHeight: 1.05, color: 'var(--wb-hero-text)' }}>
-          {it ? <>Contatti & <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>emergenze</em></> : <>Contacts & <em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>emergencies</em></>}
+          {<HeroTitle chapterKey="contatti" lang={lang} />}
         </h2>
       </div>
 
@@ -691,7 +776,7 @@ function ChContatti({ lang, propertyName, items, emergencyItems }) {
 
         {contacts.length === 0 && (
           <p style={{ fontSize: '0.78rem', color: 'var(--salt-faint)', marginBottom: '1rem' }}>
-            {it ? 'Contatti non ancora configurati.' : 'Contacts not yet configured.'}
+            {t('contattiNonConfigurati', lang)}
           </p>
         )}
         {contacts.map((c, idx) => (
@@ -701,23 +786,23 @@ function ChContatti({ lang, propertyName, items, emergencyItems }) {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem' }}>{c.name || propertyName || '—'}</div>
-              <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)', marginTop: '0.1rem' }}>{it ? c.role_it : c.role_en}</div>
+              <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)', marginTop: '0.1rem' }}>{pick(c, 'role', lang)}</div>
               <div style={{ fontSize: '0.78rem', color: 'var(--gold)', marginTop: '0.3rem', fontFamily: 'monospace' }}>{c.phone}</div>
             </div>
             <a href={contactLink(c)} target="_blank" rel="noopener noreferrer" style={{ background: 'rgba(201,171,114,.08)', border: '1px solid rgba(201,171,114,.25)', color: 'var(--gold)', padding: '0.5rem 0.9rem', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-              {c.is_whatsapp ? 'WhatsApp' : (it ? 'Chiama' : 'Call')}
+              {c.is_whatsapp ? 'WhatsApp' : (t('chiama', lang))}
             </a>
           </div>
         ))}
 
         <span style={{ fontSize: '0.58rem', letterSpacing: '0.35em', textTransform: 'uppercase', color: 'var(--gold)', display: 'block', margin: '1.5rem 0 0.8rem' }}>
-          {it ? 'Numeri di emergenza' : 'Emergency numbers'}
+          {t('numeriEmergenza', lang)}
         </span>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
           {emergency.map((e, idx) => (
             <div key={idx} style={{ background: 'rgba(140,74,74,.08)', border: '1px solid rgba(140,74,74,.22)', padding: '1rem', textAlign: 'center' }}>
               <div style={{ fontSize: '1.3rem', marginBottom: '0.4rem' }}>{ICON_MAP[e.icon] || '📞'}</div>
-              <div style={{ fontSize: '0.68rem', fontWeight: 300, color: 'var(--salt-dim)', marginBottom: '0.25rem' }}>{it ? e.name_it : e.name_en}</div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 300, color: 'var(--salt-dim)', marginBottom: '0.25rem' }}>{pick(e, 'name', lang)}</div>
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.1rem', color: '#b8483f' }}>{e.num}</div>
             </div>
           ))}
