@@ -280,10 +280,9 @@ export default function PortaleOspiti() {
               </select>
             </div>
             <div className="item-row" style={{ marginBottom: '.5rem' }}>
-              <input className="form-input" style={{ flex: 1, minWidth: 140 }} placeholder="Ruolo IT (es. Host)" value={c.role_it}
-                onChange={e => updateItem('contacts_items', i, 'role_it', e.target.value)} />
-              <input className="form-input" style={{ flex: 1, minWidth: 140 }} placeholder="Ruolo EN" value={c.role_en}
-                onChange={e => updateItem('contacts_items', i, 'role_en', e.target.value)} />
+              <input className="form-input" style={{ flex: 1, minWidth: 140 }} placeholder={`Ruolo (${editLang.toUpperCase()}, es. Host)`} value={c[`role_${editLang}`] || ''}
+                onChange={e => updateItem('contacts_items', i, `role_${editLang}`, e.target.value)} />
+              <LangCompleteness item={c} field="role" />
               <input className="form-input" style={{ flex: 1, minWidth: 160 }} placeholder="+39 ..." value={c.phone}
                 onChange={e => updateItem('contacts_items', i, 'phone', e.target.value)} />
             </div>
@@ -313,8 +312,8 @@ export default function PortaleOspiti() {
               <option value="police">🚓 Polizia</option>
               <option value="hospital">🏥 Ospedale</option>
             </select>
-            <input className="form-input" style={{ flex: 1, minWidth: 130 }} placeholder="Nome IT" value={e.name_it} onChange={ev => updateItem('emergency_items', i, 'name_it', ev.target.value)} />
-            <input className="form-input" style={{ flex: 1, minWidth: 130 }} placeholder="Nome EN" value={e.name_en} onChange={ev => updateItem('emergency_items', i, 'name_en', ev.target.value)} />
+            <input className="form-input" style={{ flex: 1, minWidth: 130 }} placeholder={`Nome (${editLang.toUpperCase()})`} value={e[`name_${editLang}`] || ''} onChange={ev => updateItem('emergency_items', i, `name_${editLang}`, ev.target.value)} />
+            <LangCompleteness item={e} field="name" />
             <input className="form-input" style={{ width: 140 }} placeholder="Numero" value={e.num} onChange={ev => updateItem('emergency_items', i, 'num', ev.target.value)} />
             <button className="btn-sm danger" onClick={() => removeItem('emergency_items', i)}>🗑</button>
           </div>
@@ -345,10 +344,9 @@ export default function PortaleOspiti() {
             <div className="item-row" style={{ marginBottom: '.6rem', alignItems: 'center' }}>
               <input className="form-input" style={{ width: 60, textAlign: 'center' }} value={sec.icon}
                 onChange={e => updateCustomSectionMeta(secIdx, 'icon', e.target.value)} placeholder="🌟" />
-              <input className="form-input" style={{ flex: 1, minWidth: 140 }} value={sec.label_it}
-                onChange={e => updateCustomSectionMeta(secIdx, 'label_it', e.target.value)} placeholder="Nome sezione IT" />
-              <input className="form-input" style={{ flex: 1, minWidth: 140 }} value={sec.label_en}
-                onChange={e => updateCustomSectionMeta(secIdx, 'label_en', e.target.value)} placeholder="Nome sezione EN" />
+              <input className="form-input" style={{ flex: 1, minWidth: 140 }} value={sec[`label_${editLang}`] || ''}
+                onChange={e => updateCustomSectionMeta(secIdx, `label_${editLang}`, e.target.value)} placeholder={`Nome sezione (${editLang.toUpperCase()})`} />
+              <LangCompleteness item={sec} field="label" />
               <button className="btn-sm" onClick={() => moveCustomSection(secIdx, -1)} disabled={secIdx === 0}>↑</button>
               <button className="btn-sm" onClick={() => moveCustomSection(secIdx, 1)} disabled={secIdx === content.custom_sections.length - 1}>↓</button>
               <button className="btn-sm danger" onClick={() => removeCustomSection(secIdx)}>🗑 Elimina sezione</button>
@@ -360,16 +358,14 @@ export default function PortaleOspiti() {
                 <div className="item-row" style={{ marginBottom: '.5rem' }}>
                   <input className="form-input" style={{ width: 60, textAlign: 'center' }} value={item.icon}
                     onChange={e => updateCustomSectionItem(secIdx, itemIdx, 'icon', e.target.value)} placeholder="🔑" />
-                  <input className="form-input" style={{ flex: 1, minWidth: 140 }} value={item.title_it}
-                    onChange={e => updateCustomSectionItem(secIdx, itemIdx, 'title_it', e.target.value)} placeholder="Titolo IT" />
-                  <input className="form-input" style={{ flex: 1, minWidth: 140 }} value={item.title_en}
-                    onChange={e => updateCustomSectionItem(secIdx, itemIdx, 'title_en', e.target.value)} placeholder="Titolo EN" />
+                  <input className="form-input" style={{ flex: 1, minWidth: 140 }} value={item[`title_${editLang}`] || ''}
+                    onChange={e => updateCustomSectionItem(secIdx, itemIdx, `title_${editLang}`, e.target.value)} placeholder={`Titolo (${editLang.toUpperCase()})`} />
+                  <LangCompleteness item={item} field="title" />
                 </div>
                 <div className="item-row" style={{ marginBottom: '.5rem' }}>
-                  <textarea className="form-textarea" style={{ flex: 1, minHeight: 60 }} value={item.text_it}
-                    onChange={e => updateCustomSectionItem(secIdx, itemIdx, 'text_it', e.target.value)} placeholder="Testo IT" />
-                  <textarea className="form-textarea" style={{ flex: 1, minHeight: 60 }} value={item.text_en}
-                    onChange={e => updateCustomSectionItem(secIdx, itemIdx, 'text_en', e.target.value)} placeholder="Testo EN" />
+                  <textarea className="form-textarea" style={{ flex: 1, minHeight: 60 }} value={item[`text_${editLang}`] || ''}
+                    onChange={e => updateCustomSectionItem(secIdx, itemIdx, `text_${editLang}`, e.target.value)} placeholder={`Testo (${editLang.toUpperCase()})`} />
+                  <LangCompleteness item={item} field="text" />
                 </div>
                 <button className="btn-sm danger" onClick={() => removeCustomSectionItem(secIdx, itemIdx)}>🗑 Rimuovi voce</button>
               </div>
