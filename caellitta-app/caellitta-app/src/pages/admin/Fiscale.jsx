@@ -5,7 +5,7 @@ import { useActiveProperty } from '../../lib/PropertyContext'
 export default function Fiscale() {
   const { properties } = useActiveProperty()
   const [accountId, setAccountId] = useState(null)
-  const [config, setConfig] = useState({ regime: 'cedolare_secca', aliquota: 21 })
+  const [config, setConfig] = useState({ regime: 'cedolare_secca', aliquota: 21, prices_include_tax: false })
   const [bookings, setBookings] = useState([])
   const [expenses, setExpenses] = useState([])
   const [year, setYear] = useState(new Date().getFullYear())
@@ -49,7 +49,8 @@ export default function Fiscale() {
     if (!accountId) return
     setSaving(true); setSavedMsg('')
     const { error } = await sb.from('fiscal_config').upsert({
-      account_id: accountId, regime: config.regime, aliquota: Number(config.aliquota), updated_at: new Date().toISOString(),
+      account_id: accountId, regime: config.regime, aliquota: Number(config.aliquota),
+      prices_include_tax: config.prices_include_tax, updated_at: new Date().toISOString(),
     }, { onConflict: 'account_id' })
     setSaving(false)
     setSavedMsg(error ? `Errore: ${error.message}` : 'Salvato.')
@@ -58,10 +59,24 @@ export default function Fiscale() {
   const filteredBookings = filterProperty === 'all' ? bookings : bookings.filter(b => b.property_id === filterProperty)
   const filteredExpenses = filterProperty === 'all' ? expenses : expenses.filter(e => e.property_id === filterProperty)
 
-  const ricaviTotali = filteredBookings.reduce((s, b) => s + (b.amount_total || 0), 0)
+  const ricaviInseriti = filteredBookings.reduce((s, b) => s + (b.amount_total || 0), 0)
   const speseTotali = filteredExpenses.reduce((s, e) => s + (e.amount || 0), 0)
-  const margine = ricaviTotali - speseTotali
-  const imposta = ricaviTotali * (Number(config.aliquota) || 0) / 100
+  const aliquotaNum = Number(config.aliquota) || 0
+
+  // Se i prezzi inseriti sono GIÀ al netto della cedolare secca, l'imposta va "scorporata"
+  // (calcolata all'indietro) invece che aggiunta sopra il lordo.
+  let ricaviLordi, imposta, nettoDopoTasse
+  if (config.prices_include_tax) {
+    ricaviLordi = aliquotaNum < 100 ? ricaviInseriti / (1 - aliquotaNum / 100) : ricaviInseriti
+    imposta = ricaviLordi - ricaviInseriti
+    nettoDopoTasse = ricaviInseriti
+  } else {
+    ricaviLordi = ricaviInseriti
+    imposta = ricaviLordi * aliquotaNum / 100
+    nettoDopoTasse = ricaviLordi - imposta
+  }
+  const ricaviTotali = ricaviLordi
+  const margine = nettoDopoTasse - speseTotali
 
   // Riepilogo per struttura — utile quando si guarda "tutte le strutture" insieme
   const perStruttura = properties.map(p => {
@@ -99,24 +114,31 @@ export default function Fiscale() {
           {/* RIEPILOGO */}
           <div className="card" style={{ marginBottom: '1.5rem' }}>
             <div className="sec-hdr"><span className="sec-title">Riepilogo {year}</span></div>
-            <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+            <div className="form-grid" style={{ gridTemplateColumns: 'repeat(5,1fr)' }}>
               <div>
-                <div style={{ fontSize: '0.58rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>Ricavi totali</div>
-                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.6rem', color: 'var(--green)' }}>€{ricaviTotali.toLocaleString('it')}</div>
+                <div style={{ fontSize: '0.58rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>Ricavi lordi</div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.6rem', color: 'var(--green)' }}>€{ricaviTotali.toLocaleString('it', { maximumFractionDigits: 0 })}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.58rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>Imposta ({config.aliquota}%)</div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.6rem', color: 'var(--amber)' }}>€{imposta.toLocaleString('it', { maximumFractionDigits: 0 })}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.58rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>Netto dopo cedolare secca</div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.6rem', color: 'var(--gold)' }}>€{nettoDopoTasse.toLocaleString('it', { maximumFractionDigits: 0 })}</div>
               </div>
               <div>
                 <div style={{ fontSize: '0.58rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>Spese totali</div>
-                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.6rem', color: 'var(--red)' }}>€{speseTotali.toLocaleString('it')}</div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.6rem', color: 'var(--red)' }}>€{speseTotali.toLocaleString('it', { maximumFractionDigits: 0 })}</div>
               </div>
               <div>
-                <div style={{ fontSize: '0.58rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>Margine</div>
-                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.6rem', color: 'var(--gold)' }}>€{margine.toLocaleString('it')}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.58rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>Imposta stimata ({config.aliquota}%)</div>
-                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.6rem', color: 'var(--amber)' }}>€{imposta.toLocaleString('it')}</div>
+                <div style={{ fontSize: '0.58rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>Margine netto reale</div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.6rem', color: 'var(--gold)' }}>€{margine.toLocaleString('it', { maximumFractionDigits: 0 })}</div>
               </div>
             </div>
+            <p style={{ fontSize: '0.62rem', color: 'var(--salt-faint)', marginTop: '0.8rem' }}>
+              Margine netto reale = ricavi al netto della cedolare secca − spese. È il guadagno effettivo dopo le tasse.
+            </p>
           </div>
 
           {/* RIEPILOGO PER STRUTTURA (solo se "tutte" selezionato e più di 1 struttura) */}
@@ -154,6 +176,19 @@ export default function Fiscale() {
                 <input className="form-input" type="number" step="0.5" value={config.aliquota} onChange={e => setConfig(p => ({ ...p, aliquota: e.target.value }))} />
               </div>
             </div>
+            <div className="form-group" style={{ marginTop: '0.8rem' }}>
+              <label className="form-label">I prezzi che inserisci nelle prenotazioni sono:</label>
+              <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', flex: 1, minWidth: 220, border: `1px solid ${!config.prices_include_tax ? 'var(--gold)' : 'var(--gold-dim2)'}`, padding: '0.7rem 0.9rem', background: !config.prices_include_tax ? 'var(--gold-dim)' : 'transparent' }}>
+                  <input type="radio" checked={!config.prices_include_tax} onChange={() => setConfig(p => ({ ...p, prices_include_tax: false }))} style={{ accentColor: 'var(--gold)' }} />
+                  <span style={{ fontSize: '0.8rem' }}><strong>Lordi</strong> — il totale pagato dall'ospite, l'imposta va calcolata sopra (caso più comune)</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', flex: 1, minWidth: 220, border: `1px solid ${config.prices_include_tax ? 'var(--gold)' : 'var(--gold-dim2)'}`, padding: '0.7rem 0.9rem', background: config.prices_include_tax ? 'var(--gold-dim)' : 'transparent' }}>
+                  <input type="radio" checked={config.prices_include_tax} onChange={() => setConfig(p => ({ ...p, prices_include_tax: true }))} style={{ accentColor: 'var(--gold)' }} />
+                  <span style={{ fontSize: '0.8rem' }}><strong>Già al netto</strong> — hai già scorporato tu la cedolare secca, l'imposta va ricalcolata all'indietro</span>
+                </label>
+              </div>
+            </div>
             <p style={{ fontSize: '0.65rem', color: 'var(--salt-faint)', marginBottom: '1rem' }}>
               L'aliquota standard per la cedolare secca sulle locazioni brevi è il 21%. Verifica sempre con il tuo commercialista la percentuale corretta per la tua situazione specifica — questo è un riepilogo indicativo, non una dichiarazione fiscale.
             </p>
@@ -161,6 +196,27 @@ export default function Fiscale() {
               <button className="btn-primary" onClick={saveConfig} disabled={saving}>{saving ? 'Salvataggio…' : 'Salva'}</button>
               {savedMsg && <span style={{ fontSize: '0.78rem', color: 'var(--salt-dim)' }}>{savedMsg}</span>}
             </div>
+          </div>
+
+          {/* SCADENZE — la cedolare secca sui redditi dell'anno si versa l'anno successivo */}
+          <div className="card" style={{ marginTop: '1.5rem' }}>
+            <div className="sec-hdr"><span className="sec-title">Scadenze di versamento {year}</span></div>
+            <p style={{ fontSize: '0.78rem', color: 'var(--salt-dim)', lineHeight: 1.7 }}>
+              La cedolare secca sui ricavi di un anno si versa l'anno <strong>successivo</strong>, insieme al modello Redditi:
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.6rem' }}>
+              <div style={{ flex: 1, minWidth: 200, border: '1px solid var(--gold-dim2)', padding: '0.8rem 1rem' }}>
+                <div style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>Acconto</div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.1rem', color: 'var(--gold)' }}>30 novembre {year + 1}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 200, border: '1px solid var(--gold-dim2)', padding: '0.8rem 1rem' }}>
+                <div style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--salt-faint)' }}>Saldo</div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1.1rem', color: 'var(--gold)' }}>30 giugno {year + 2}</div>
+              </div>
+            </div>
+            <p style={{ fontSize: '0.62rem', color: 'var(--salt-faint)', marginTop: '0.7rem' }}>
+              Date indicative del regime ordinario F24 — verifica sempre le scadenze esatte con il tuo commercialista, possono variare (proroghe, rateizzazioni).
+            </p>
           </div>
         </>
       )}
