@@ -14,6 +14,7 @@ const EMPTY = {
   check_in: '', check_out: '', guests_count: 1,
   amount_total: '', amount_deposit: '', platform: 'Airbnb',
   status: 'confirmed', payment_status: 'unpaid', notes: '', unit_id: '',
+  crib_requested: false, crib_count: 0, crib_notes: '',
   checkin_by: '', checkout_by: '', cleaning_by: '',
   birth_date: '', birth_place: '', gender: '', document_type: '', document_number: '', nationality: ''
 }
@@ -140,6 +141,9 @@ export default function Prenotazioni() {
       payment_status: b.payment_status || 'unpaid',
       notes:        b.notes        || '',
       unit_id:      b.unit_id      || '',
+      crib_requested: b.crib_requested || false,
+      crib_count:   b.crib_count   || 0,
+      crib_notes:   b.crib_notes   || '',
       checkin_by:   b.checkin_by   || '',
       checkout_by:  b.checkout_by  || '',
       cleaning_by:  b.cleaning_by  || '',
@@ -257,6 +261,9 @@ export default function Prenotazioni() {
       payment_status: form.payment_status,
       notes:        form.notes,
       unit_id:      form.unit_id || null,
+      crib_requested: form.crib_requested,
+      crib_count:   form.crib_requested ? (Number(form.crib_count) || 1) : 0,
+      crib_notes:   form.crib_notes || null,
       checkin_by:   form.checkin_by || null,
       checkout_by:  form.checkout_by || null,
       cleaning_by:  form.cleaning_by || null,
@@ -427,6 +434,9 @@ export default function Prenotazioni() {
             {b.unit_id && unitById[b.unit_id] && (
               <span style={{ color: 'var(--gold)' }}>🚪 {unitById[b.unit_id].name}</span>
             )}
+            {b.crib_requested && (
+              <span style={{ color: 'var(--gold)' }} title={b.crib_notes || ''}>👶 {b.crib_count} culla/e</span>
+            )}
             <span style={{ color: 'var(--gold)', fontFamily: "'Cormorant Garamond',serif", fontSize: '0.95rem' }}>€{b.amount_total}</span>
             <span className={`badge ${STATUSES[b.status] || 'badge-gray'}`}>
               {STATUS_LABELS[b.status] || b.status}
@@ -573,10 +583,31 @@ export default function Prenotazioni() {
               <label className="form-label">Camera</label>
               <select className="form-select" value={f.unit_id} onChange={e => setForm(p => ({ ...p, unit_id: e.target.value }))}>
                 <option value="">— Intera struttura / non specificata —</option>
-                {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                {units.map(u => <option key={u.id} value={u.id}>{u.name}{u.crib_available ? ' 👶' : ''}</option>)}
               </select>
             </div>
           )}
+          {(() => {
+            const selectedUnit = units.find(u => u.id === f.unit_id)
+            const cribPossible = !f.unit_id || selectedUnit?.crib_available
+            if (!cribPossible) return null
+            return (
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', marginBottom: f.crib_requested ? '0.6rem' : 0 }}>
+                  <input type="checkbox" checked={f.crib_requested} onChange={e => setForm(p => ({ ...p, crib_requested: e.target.checked, crib_count: e.target.checked ? 1 : 0 }))} style={{ accentColor: 'var(--gold)' }} />
+                  <span className="form-label" style={{ margin: 0 }}>👶 Culla richiesta{selectedUnit?.crib_count ? ` (disponibili: ${selectedUnit.crib_count})` : ''}</span>
+                </label>
+                {f.crib_requested && (
+                  <div style={{ display: 'flex', gap: '0.6rem' }}>
+                    <input className="form-input" style={{ width: 90 }} type="number" min="1" max={selectedUnit?.crib_count || 9}
+                      value={f.crib_count} onChange={e => setForm(p => ({ ...p, crib_count: e.target.value }))} placeholder="N°" />
+                    <input className="form-input" style={{ flex: 1 }} value={f.crib_notes}
+                      onChange={e => setForm(p => ({ ...p, crib_notes: e.target.value }))} placeholder="Note (es. età bambino, sponde)" />
+                  </div>
+                )}
+              </div>
+            )
+          })()}
           <div className="form-group">
             <label className="form-label">Stato pagamento</label>
             <select className="form-select" value={f.payment_status} onChange={e => setForm(p => ({ ...p, payment_status: e.target.value }))}>
