@@ -18,7 +18,7 @@ export default function Login() {
       setError('Credenziali non valide. Riprova.')
       setLoading(false)
     } else {
-      navigate('/')
+      navigate('/strutture')
     }
   }
 
