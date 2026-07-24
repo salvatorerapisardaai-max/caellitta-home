@@ -3,7 +3,7 @@ import { sb } from '../../lib/supabase'
 import Modal from '../../components/Modal'
 import { useActiveProperty } from '../../lib/PropertyContext'
 
-const EMPTY_PARTNER = { partner: '', title: '', title_en: '', discount: '', description: '', description_en: '', category_id: '', commission_pct: 10, active: true }
+const EMPTY_PARTNER = { partner: '', title: '', title_en: '', title_es: '', title_fr: '', title_de: '', discount: '', description: '', description_en: '', description_es: '', description_fr: '', description_de: '', category_id: '', commission_pct: 10, active: true }
 const EMPTY_ASSIGN  = { booking_id: '', template_ids: [], amounts: {} }
 
 export default function Convenzioni() {
@@ -17,6 +17,7 @@ export default function Convenzioni() {
   const [modalAssign,  setModalA] = useState(false)
   const [form,     setForm]       = useState(EMPTY_PARTNER)
   const [assign,   setAssign]     = useState(EMPTY_ASSIGN)
+  const [extraLang, setExtraLang] = useState('es')
   const [editing,  setEditing]    = useState(null)
   const [saving,   setSaving]     = useState(false)
   const [saveError,setSaveError]  = useState('')
@@ -90,7 +91,9 @@ export default function Convenzioni() {
   function openEdit(t) {
     setForm({
       partner: t.partner||'', title: t.title||'', title_en: t.title_en||'',
+      title_es: t.title_es||'', title_fr: t.title_fr||'', title_de: t.title_de||'',
       discount: t.discount||'', description: t.description||'', description_en: t.description_en||'',
+      description_es: t.description_es||'', description_fr: t.description_fr||'', description_de: t.description_de||'',
       category_id: t.category_id||'', commission_pct: t.commission_pct ?? 10, active: t.active ?? true
     })
     setEditing(t.id); setSaveError(''); setModalP(true)
@@ -103,7 +106,9 @@ export default function Convenzioni() {
     setSaving(true); setSaveError('')
     const payload = {
       partner: form.partner, title: form.title, title_en: form.title_en || null,
+      title_es: form.title_es || null, title_fr: form.title_fr || null, title_de: form.title_de || null,
       discount: form.discount, description: form.description || null, description_en: form.description_en || null,
+      description_es: form.description_es || null, description_fr: form.description_fr || null, description_de: form.description_de || null,
       category_id: form.category_id || null,
       commission_pct: form.commission_pct === '' ? null : Number(form.commission_pct),
       active: form.active
@@ -326,6 +331,22 @@ export default function Convenzioni() {
         <div className="form-group">
           <label className="form-label">Titolo coupon (EN)</label>
           <input className="form-input" value={form.title_en} onChange={e=>setForm(p=>({...p,title_en:e.target.value}))} placeholder="Es. Lunch by the sea" />
+        </div>
+        <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+          <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
+            {[['es','🇪🇸 ES'],['fr','🇫🇷 FR'],['de','🇩🇪 DE']].map(([code, label]) => (
+              <button key={code} type="button" onClick={() => setExtraLang(code)} style={{
+                background: extraLang === code ? 'var(--gold-dim)' : 'transparent',
+                border: `1px solid ${extraLang === code ? 'var(--gold)' : 'var(--gold-dim2)'}`,
+                color: extraLang === code ? 'var(--gold)' : 'var(--salt-dim)',
+                padding: '0.3rem 0.7rem', fontSize: '0.65rem', cursor: 'pointer',
+              }}>{label}</button>
+            ))}
+          </div>
+          <input className="form-input" style={{ marginBottom: '0.5rem' }} value={form[`title_${extraLang}`] || ''}
+            onChange={e=>setForm(p=>({...p, [`title_${extraLang}`]: e.target.value}))} placeholder={`Titolo coupon (${extraLang.toUpperCase()})`} />
+          <textarea className="form-textarea" value={form[`description_${extraLang}`] || ''}
+            onChange={e=>setForm(p=>({...p, [`description_${extraLang}`]: e.target.value}))} placeholder={`Descrizione (${extraLang.toUpperCase()})`} />
         </div>
         <div className="form-group">
           <label className="form-label">Dettaglio * (es. livello · durata · inclusioni)</label>
