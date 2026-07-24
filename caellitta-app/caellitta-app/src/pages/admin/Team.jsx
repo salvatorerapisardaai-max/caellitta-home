@@ -17,17 +17,19 @@ function randomAccessCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(4))
   return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('').toUpperCase()
 }
-const EXPORT_URL = 'https://ejjatrfeeatgiqpomibd.supabase.co/functions/v1/ical-export'
+const EXPORT_URL_BASE = 'https://ejjatrfeeatgiqpomibd.supabase.co/functions/v1/ical-export'
 const PLATFORM_LABELS = { airbnb: 'Airbnb', booking: 'Booking.com' }
 
 export default function Team() {
   const { activePropertyId, activeProperty } = useActiveProperty()
+  const exportUrl = `${EXPORT_URL_BASE}?property_id=${activePropertyId}`
   const [collaborators, setCollaborators] = useState([])
   const [bookings, setBookings] = useState([])
   const [feeds, setFeeds] = useState([])
   const [units, setUnits] = useState([])
   const [newUnitName, setNewUnitName] = useState('')
   const [newUnitCapacity, setNewUnitCapacity] = useState('')
+  const [newUnitCribCount, setNewUnitCribCount] = useState('')
   const [savingUnit, setSavingUnit] = useState(false)
   const [feedUrls, setFeedUrls] = useState({})
   const [syncing, setSyncing] = useState(false)
@@ -93,7 +95,7 @@ export default function Team() {
   }
 
   function copyExportUrl() {
-    navigator.clipboard.writeText(EXPORT_URL)
+    navigator.clipboard.writeText(exportUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -105,6 +107,7 @@ export default function Team() {
     await sb.from('property_units').insert({
       property_id: activePropertyId, name: newUnitName.trim(),
       capacity: newUnitCapacity ? Number(newUnitCapacity) : null, sort_order: maxOrder + 1,
+      crib_available: Number(newUnitCribCount) > 0, crib_count: Number(newUnitCribCount) || 0,
     })
     setNewUnitName(''); setNewUnitCapacity(''); setSavingUnit(false)
     load()
@@ -307,6 +310,7 @@ export default function Team() {
             <div>
               <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: '1rem' }}>{u.name}</span>
               {u.capacity && <span style={{ fontSize: '0.7rem', color: 'var(--salt-faint)', marginLeft: '0.6rem' }}>· {u.capacity} ospiti max</span>}
+              {u.crib_available && <span style={{ fontSize: '0.7rem', color: 'var(--gold)', marginLeft: '0.6rem' }}>· 👶 {u.crib_count} culla/e</span>}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <span className={`badge ${u.active ? 'badge-green' : 'badge-gray'}`}>{u.active ? 'Attiva' : 'Disattivata'}</span>
@@ -320,7 +324,9 @@ export default function Team() {
             value={newUnitName} onChange={e => setNewUnitName(e.target.value)} />
           <input className="form-input" style={{ width: 110 }} type="number" placeholder="Ospiti max"
             value={newUnitCapacity} onChange={e => setNewUnitCapacity(e.target.value)} />
-          <button className="btn-primary" onClick={addUnit} disabled={savingUnit || !newUnitName.trim()}>+ Aggiungi</button>
+          <input className="form-input" style={{ width: 110 }} type="number" placeholder="N° culle"
+            value={newUnitCribCount} onChange={e => setNewUnitCribCount(e.target.value)} />
+          <button className="btn-primary" onClick={() => { addUnit(); setNewUnitCribCount('') }} disabled={savingUnit || !newUnitName.trim()}>+ Aggiungi</button>
         </div>
       </div>
 
@@ -336,7 +342,7 @@ export default function Team() {
           <strong>2. Esporta</strong> — incolla invece questo link nella sezione "importa calendario" di Airbnb e Booking.com, così anche le prenotazioni fatte qui (o dai collaboratori) bloccano le date da loro:
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-          <code style={{ fontSize: '0.68rem', color: 'var(--gold)', background: 'var(--lava-hover)', padding: '0.4rem 0.7rem', wordBreak: 'break-all' }}>{EXPORT_URL}</code>
+          <code style={{ fontSize: '0.68rem', color: 'var(--gold)', background: 'var(--lava-hover)', padding: '0.4rem 0.7rem', wordBreak: 'break-all' }}>{exportUrl}</code>
           <button className="btn-sm" onClick={copyExportUrl}>{copied ? '✓ Copiato' : 'Copia'}</button>
         </div>
 
